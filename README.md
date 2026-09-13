@@ -4,6 +4,7 @@ An original coastal pirate-TV experience built around Unlayer React Image Editor
 
 ## Current experience
 
+- A short, skippable mobile-uplink terminal prepares the camera images before callsign entry.
 - Five original coastal illustrations, with HTML controls separate from the artwork.
 - Native Unlayer editing for the broadcast plate, with optional station-ident customization. The default ident gets you into the action sooner.
 - Preview and on-air views hold the actual Save output.
@@ -11,7 +12,7 @@ An original coastal pirate-TV experience built around Unlayer React Image Editor
 - Animated camera pans, a freeze-frame entry, hard-cut/dissolve choices, incoming notices and an accessible warning dialog. Reduced-motion settings disable auto camera cuts and animations.
 - Replay the recorded image/decision sequence or recut from the interruption.
 - Download a frame or a production sheet rendered with Unlayer React Elements.
-- New original 126 BPM heist music with driven bass, punchier drums, dark stabs and tension. Off by default, with an explicit soundtrack button and scene-dependent mixing.
+- Licensed 135 BPM “Chase Pulse” by Kevin MacLeod replaces the procedural stems. Off by default, with smooth scene fades and one active music player across same-origin tabs.
 
 This release animates illustrated stills, not generated video footage. Replay preserves sequence rather than real elapsed timing. Calls are captioned fiction, not live calls or recorded voice actors. There is no actual broadcast or simulated audience metric.
 
@@ -25,12 +26,12 @@ The app keeps the current session in memory. Refresh starts a new night. Returni
 
 ## Architecture
 
-`app/page.tsx` owns the visible stages and native Save callback. `lib/broadcast.ts` holds deterministic state transitions and the cut history. `lib/audio.ts` schedules synchronized audio buffers and scene-dependent volume. `lib/sheet.tsx` renders a production sheet using React Elements.
+`app/page.tsx` owns the visible stages and native Save callback. `lib/broadcast.ts` holds deterministic state transitions and the cut history. `lib/audio.ts` plays one licensed recording with conservative scene-dependent gain. `lib/sheet.tsx` renders a production sheet using React Elements.
 
 Optional WebMCP tools read broadcast state and start an already completed replay. They are feature-detected. A supported validation context was unavailable in this implementation pass; WebMCP is not runtime-verified.
 
 ## Assets and validation boundary
 
-See [art provenance](docs/art-provenance.md) and [current music provenance](docs/music-v2-provenance.md). No artwork from Saltline, Second Take or external entries is used. No Rockstar assets, franchise characters, trailer footage or samples. Lucide icons retain the included license.
+See [art provenance](docs/art-provenance.md) and [current music provenance](docs/music-current-license.md). No artwork from Saltline, Second Take or external entries is used. No Rockstar assets, franchise characters, trailer footage or samples. Lucide icons retain the included license.
 
 Build/type checks and six reducer tests are the automated validation scope. Native editor interaction, mobile layout, downloads and music listening need an end-to-end acceptance pass before competition submission. No claim of submission readiness is made by the private preview.
