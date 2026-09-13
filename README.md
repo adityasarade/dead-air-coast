@@ -1,18 +1,19 @@
 # Dead Air · Your Coast, Your Cut
 
-An original coastal pirate-TV experience built around Unlayer React Image Editor. Name your station, create its ident, edit a camera still, take your exact saved image live, handle a caller and recut your broadcast.
+An original coastal pirate-TV experience built around Unlayer React Image Editor. Name your station, catch an animated camera sequence, freeze and edit a frame, go live, handle a caller and a warning at the van, then cut your getaway episode.
 
 ## Current experience
 
-- Three original coastal illustrations, with HTML controls separate from the artwork.
-- Native Unlayer editing for the station ident and broadcast plate.
+- Five original coastal illustrations, with HTML controls separate from the artwork.
+- Native Unlayer editing for the broadcast plate, with optional station-ident customization. The default ident gets you into the action sooner.
 - Preview and on-air views hold the actual Save output.
-- Take the caller, hold your image or switch the angle. Revise the plate and retain both versions.
+- Take the caller, hold your image or switch the angle. Then air the fixer’s warning or protect the source. These choices change the on-air image and recorded episode.
+- Animated camera pans, a freeze-frame entry, hard-cut/dissolve choices, incoming notices and an accessible warning dialog. Reduced-motion settings disable auto camera cuts and animations.
 - Replay the recorded image/decision sequence or recut from the interruption.
 - Download a frame or a production sheet rendered with Unlayer React Elements.
-- Original synchronized music stems, off by default; percussion enters on air and music ducks during a call.
+- New original 126 BPM heist music with driven bass, punchier drums, dark stabs and tension. Off by default, with an explicit soundtrack button and scene-dependent mixing.
 
-This release uses illustrated stills, not generated video footage. Replay preserves sequence rather than real elapsed timing. Calls are captioned fiction, not live calls or recorded voice actors. There is no actual broadcast or simulated audience metric.
+This release animates illustrated stills, not generated video footage. Replay preserves sequence rather than real elapsed timing. Calls are captioned fiction, not live calls or recorded voice actors. There is no actual broadcast or simulated audience metric.
 
 ## Run
 
@@ -30,6 +31,6 @@ Optional WebMCP tools read broadcast state and start an already completed replay
 
 ## Assets and validation boundary
 
-See [art provenance](docs/art-provenance.md) and [music provenance](docs/music-provenance.md). No artwork from Saltline, Second Take or external entries is used. No Rockstar assets, franchise characters, trailer footage or samples. Lucide icons retain the included license.
+See [art provenance](docs/art-provenance.md) and [current music provenance](docs/music-v2-provenance.md). No artwork from Saltline, Second Take or external entries is used. No Rockstar assets, franchise characters, trailer footage or samples. Lucide icons retain the included license.
 
-Build/type checks and four reducer tests are the automated validation scope. Native editor interaction, mobile layout, downloads and music listening need an end-to-end acceptance pass before competition submission. No claim of submission readiness is made by the private preview.
+Build/type checks and six reducer tests are the automated validation scope. Native editor interaction, mobile layout, downloads and music listening need an end-to-end acceptance pass before competition submission. No claim of submission readiness is made by the private preview.
