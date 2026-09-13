@@ -1,0 +1,7 @@
+export class StationAudio{
+ private ctx:AudioContext|null=null;private buffers:AudioBuffer[]=[];private gains:GainNode[]=[];private sources:AudioBufferSourceNode[]=[];private enabled=false;private state='intro';private master:GainNode|null=null;
+ async start(){this.ctx??=new AudioContext();await this.ctx.resume();if(!this.buffers.length){this.buffers=await Promise.all(['bass','epiano','drums','tension'].map(async n=>{const r=await fetch('/audio/'+n+'.wav');if(!r.ok)throw Error('Music is unavailable.');return this.ctx!.decodeAudioData(await r.arrayBuffer());}));}if(this.enabled)return;this.enabled=true;this.master=this.ctx.createGain();this.master.gain.value=.45;this.master.connect(this.ctx.destination);const when=this.ctx.currentTime+.08;this.sources=this.buffers.map((b)=>{const s=this.ctx!.createBufferSource(),g=this.ctx!.createGain();s.buffer=b;s.loop=true;s.connect(g);g.connect(this.master!);this.gains.push(g);s.start(when);return s;});this.setScene(this.state);}
+ setScene(state:string){this.state=state;if(!this.ctx)return;const live=['desk','call','replay','ending'].includes(state);const levels=[state==='call'?.30:.8,state==='call'?.25:.7,live?.65:.18,state==='call'?.5:0];this.gains.forEach((g,i)=>g.gain.setTargetAtTime(levels[i],this.ctx!.currentTime,.4));}
+ stop(){this.enabled=false;this.sources.forEach(s=>{try{s.stop();}catch{}});this.sources=[];this.gains.forEach(g=>g.disconnect());this.gains=[];this.master?.disconnect();}
+ close(){this.stop();void this.ctx?.close();this.ctx=null;}
+}
