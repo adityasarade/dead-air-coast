@@ -9,3 +9,5 @@ A closing composition shows the original getaway scene, the station name and the
 Audio is newly recomposed at 126 BPM, replacing the earlier 96 BPM groove. Four synchronized original stems use cache-distinct paths; muting while loading invalidates that pending playback request. Sound cues are conditional on active user-enabled audio.
 
 Validation: six state tests cover image propagation, branch changes, correction history, warning choices, recut and duplicate actions. Type and production-build checks are required. Real browser interaction, headphone listening and mobile acceptance remain separate unverified checks in this pass.
+
+Music delivery uses four 160 kbps MP3 stems. Decoded frame counts are checked against the original loop to preserve synchronized starts and loop lengths. Original WAV masters remain in the visual-pass audio archive, not in the public site payload. The interface shows a loading state until decoding completes.

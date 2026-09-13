@@ -6,7 +6,7 @@ export class StationAudio {
  private state='intro'; private master:GainNode|null=null; private epoch=0;
  async start(){
   const epoch=++this.epoch;this.ctx??=new AudioContext();const ctx=this.ctx;await ctx.resume();
-  this.loading??=Promise.all(['bass','epiano','drums','tension'].map(async n=>{const r=await fetch('/audio/heist-'+n+'.wav');if(!r.ok)throw Error('Music is unavailable.');return ctx.decodeAudioData(await r.arrayBuffer());})).catch(e=>{this.loading=null;throw e;});
+  this.loading??=Promise.all(['bass','epiano','drums','tension'].map(async n=>{const r=await fetch('/audio/heist-'+n+'.mp3');if(!r.ok)throw Error('Music is unavailable.');return ctx.decodeAudioData(await r.arrayBuffer());})).catch(e=>{this.loading=null;throw e;});
   const buffers=await this.loading;if(epoch!==this.epoch)return;if(this.sources.length)return;
   this.master=ctx.createGain();this.master.gain.value=.62;this.master.connect(ctx.destination);
   const when=ctx.currentTime+.06;
