@@ -2,6 +2,8 @@
 
 An original coastal pirate-TV experience built around Unlayer React Image Editor. Name your station, catch an animated camera sequence, freeze and edit a frame, go live, handle a caller and a warning at the van, then cut your getaway episode.
 
+[Live experience](https://dead-air-coast.aditya-sarade2003.chatgpt.site/) · [Public source](https://github.com/adityasarade/dead-air-coast)
+
 ## Current experience
 
 - A short, skippable mobile-uplink terminal prepares the camera images before callsign entry.
