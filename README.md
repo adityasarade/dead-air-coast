@@ -2,7 +2,7 @@
 
 An original coastal pirate-TV experience built around Unlayer React Image Editor. Name your station, catch an animated camera sequence, freeze and edit a frame, go live, handle a caller and a warning at the van, then cut your getaway episode.
 
-[Live experience](https://dead-air-coast.aditya-sarade2003.chatgpt.site/) · [Public source](https://github.com/adityasarade/dead-air-coast)
+[Live experience](https://dead-air-woad.vercel.app/) · [Public source](https://github.com/adityasarade/dead-air-coast)
 
 ## Current experience
 
@@ -25,6 +25,10 @@ Use Node 22.13+ and `npm ci`, then `npm run dev`. No API keys or account setup. 
 `npm run build` builds the app. `npx tsc --noEmit` checks types. On Node 25+, `node --test tests/broadcast.test.mjs` checks exact saved-image propagation, branch differences, correction history and recut restoration.
 
 The app keeps the current session in memory. Refresh starts a new night. Returning to the image desk opens the previous flattened saved bitmap; editable layer history does not persist between mounts.
+
+## Deployment
+
+The public competition build runs at [dead-air-woad.vercel.app](https://dead-air-woad.vercel.app/). `vercel.json` selects the native Next.js production build through `npm run build:vercel`; the Vinext build remains the Sites-compatible path.
 
 ## Architecture
 

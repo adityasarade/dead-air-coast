@@ -1,6 +1,6 @@
 # Status — Dead Air
 
-**State:** Product and technical acceptance complete; competition account actions remain.
+**State:** Public build and source are live; entrant-account actions remain.
 
 Verified on **14 September 2026 (IST)**:
 
@@ -10,7 +10,8 @@ Verified on **14 September 2026 (IST)**:
 - Desktop and 390 × 844 layouts were visually inspected.
 - The exact edited plate successfully exported inside a 1600 × 1200 episode-card PNG.
 - The current licensed soundtrack attribution is visible and linked.
+- The public Vercel build and GitHub repository are available to anonymous visitors.
 
-**External boundary:** publishing the validated build and completing entrant-account actions remain. No implementation can guarantee a subjective judging result.
+**External boundary:** starring the upstream repository, publishing a social post, and submitting the competition form require the entrant account. No implementation can guarantee a subjective judging result.
 
-**Next gate:** publish the current commit, verify the anonymous live URL and public source, star the React Image Editor repository, optionally publish the prepared social post, then submit the official form before **24 September 2026 at 23:59 UTC (25 September, 05:29 IST)**.
+**Next gate:** star the React Image Editor repository, optionally publish the prepared social post, then submit the official form before **24 September 2026 at 23:59 UTC (25 September, 05:29 IST)**.

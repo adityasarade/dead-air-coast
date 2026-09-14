@@ -2,6 +2,10 @@
 
 Prepared on 14 September 2026 for Unlayer's Build With React Image Editor Challenge.
 
+Live build: https://dead-air-woad.vercel.app/
+
+Public source: https://github.com/adityasarade/dead-air-coast
+
 ## One-line pitch
 
 Run a pirate coastal TV station: freeze a camera feed, make a required edit in Unlayer, take it live, survive two breaking-news choices, and keep the exact broadcast as an episode card.
