@@ -18,7 +18,7 @@ export class StationAudio {
   this.channel?.postMessage('playing');this.setScene(this.state);
  }
  setScene(state:string){this.state=state;if(!this.ctx||!this.gain)return;const volume=['pressure','call'].includes(state)?.16:['watch','desk','replay'].includes(state)?.32:.24;this.gain.gain.cancelScheduledValues(this.ctx.currentTime);this.gain.gain.setTargetAtTime(this.wanted?volume:0,this.ctx.currentTime,.18);}
- cue(_kind:'live'|'message'|'cut'){/* Visual cues carry these events; no harsh overlay beeps. */}
+ cue(kind:'live'|'message'|'cut'){void kind;/* Visual cues carry these events; no harsh overlay beeps. */}
  stop(){this.epoch++;this.wanted=false;if(this.ctx&&this.gain){this.gain.gain.cancelScheduledValues(this.ctx.currentTime);this.gain.gain.setTargetAtTime(0,this.ctx.currentTime,.04);}const epoch=this.epoch;setTimeout(()=>{if(this.epoch===epoch&&!this.wanted)this.player?.pause();},180);}
  close(){this.stop();this.player?.pause();this.player?.removeAttribute('src');this.player?.load();this.player=null;this.source?.disconnect();this.gain?.disconnect();void this.ctx?.close();this.ctx=null;this.channel?.close();}
 }
