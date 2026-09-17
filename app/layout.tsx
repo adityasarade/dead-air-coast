@@ -4,7 +4,7 @@ import "./globals.css";
 const title = "Dead Air · Your Coast, Your Cut";
 const description =
   "Run an original coastal pirate-TV broadcast. Name your station, freeze a camera frame, edit it in Unlayer React Image Editor, and decide what goes on air. No account, no sign-up.";
-const siteUrl = "https://dead-air-woad.vercel.app";
+const siteUrl = "https://dead-air-coast.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

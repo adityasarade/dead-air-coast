@@ -2,7 +2,7 @@
 
 An original coastal pirate-TV experience built around Unlayer React Image Editor. Name your station, catch an animated camera sequence, freeze and edit a frame, go live, handle a caller and a warning at the van, then cut your getaway episode.
 
-[Live experience](https://dead-air-woad.vercel.app/) · [Public source](https://github.com/adityasarade/dead-air-coast)
+[Live experience](https://dead-air-coast.vercel.app/) · [Public source](https://github.com/adityasarade/dead-air-coast)
 
 ![Dead Air: the plate is marked in React Image Editor, saved, and taken to air](public/dead-air.gif)
 
@@ -125,7 +125,7 @@ The app keeps the current session in memory. Refresh starts a new night. Returni
 
 ## Deployment
 
-The public competition build runs at [dead-air-woad.vercel.app](https://dead-air-woad.vercel.app/). `vercel.json` selects the native Next.js production build through `npm run build:vercel`; the Vinext build remains the Sites-compatible path.
+The public competition build runs at [dead-air-coast.vercel.app](https://dead-air-coast.vercel.app/), which is the canonical URL. `vercel.json` selects the native Next.js production build through `npm run build:vercel`; the Vinext build remains the Sites-compatible path. The project's earlier generated hostname still resolves to the same deployment, so older links keep working.
 
 ## Architecture
 

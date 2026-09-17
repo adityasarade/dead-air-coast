@@ -1,6 +1,8 @@
 # Status — Dead Air
 
-**State:** Build and documentation are complete in the working tree. Public source and deployment need to be refreshed from it.
+**State:** Shipped. Public source and the live build are in sync; entrant-account actions remain.
+
+The canonical URL is **https://dead-air-coast.vercel.app**. The project's earlier generated hostname still resolves to the same deployment.
 
 ## Verified 17 September 2026 (IST)
 
@@ -20,4 +22,15 @@
 
 **External boundary:** starring the upstream repository, publishing a social post, and submitting the official form require the entrant account. No implementation can guarantee a subjective judging result.
 
-**Next gate:** commit and push this working tree, redeploy, confirm the live URL matches the source, then star the React Image Editor repository and submit the official form before **24 September 2026 at 23:59 UTC (25 September, 05:29 IST)**.
+## Confirmed against the live production build
+
+- The callsign field opens empty with the CTA disabled, so no personal name ships.
+- The editor rail reads GRADE / REFRAME / MARK UP / LOWER THIRD / BLOCK OUT / BUGS / BORDER through the wrapper's supported `translations` option.
+- A real draw stroke saved through the editor's own Save arrives on the on-air monitor as a `data:image/jpeg` URL — the exact export, not a re-render.
+- The desk stage carries a heading, the interruption dialog survives Escape while pending, and RUN ANOTHER NIGHT is reachable from the ending.
+- Landing transfer measured at **0.37 MB over 10 requests**, down from 2.45 MB.
+- Zero page errors and zero console errors across the full journey.
+
+**External boundary:** starring the upstream repository, publishing a social post, and submitting the official form require the entrant account. No implementation can guarantee a subjective judging result.
+
+**Next gate:** star the React Image Editor repository, optionally publish the prepared social post, then submit the official form before **24 September 2026 at 23:59 UTC (25 September, 05:29 IST)**.
