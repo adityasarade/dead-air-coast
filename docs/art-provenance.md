@@ -4,6 +4,14 @@ All scene art was generated specifically for Dead Air using the built-in image t
 
 The station ident is composed locally from this original scene and the entered station name, then authored by the visitor in Unlayer. Saved images on air and in replay come directly from the editor callback. UI controls are HTML, not click areas over a concept screenshot.
 
+The three composites Dead Air draws itself — the station ident, the closing sign-off and the downloadable episode card — set their type through `lib/canvas-type.ts`. They previously asked the canvas for `Impact`, which ships with Windows and macOS and is absent on Linux and Android; on those platforms the composite a visitor saved silently used an unrelated family. The shared stacks name a heavy cut of the system sans on every platform (Arial Black, then the platform's own black weight through `sans-serif`) and a real monospace, and every long string is measured and shrunk to fit rather than horizontally squashed by `fillText`'s `maxWidth`. The same reasoning applies to the interface: `--display` in `app/globals.css` is the CSS counterpart, with condensed fallbacks for the station marks and bugs.
+
+## Written world content
+
+All in-world writing is original to Dead Air. That includes the ten satirical Marlin Key ad spots in `lib/sponsors.ts` — the business names, the one-line spots, and the small print. Each business name was searched as a real trading name before it shipped; three earlier drafts were rewritten because the search returned live companies too close to them ("Cormorant Self-Storage", "Blue Ledger Accounting" and "The Tarpon Room"), and their replacements returned no match. `tests/station-texture.test.mjs` enforces the boundary mechanically: it fails on any franchise term, on a list of known real trade names including the three rejected drafts, and on a duplicated or empty field.
+
+The EYES ON CH 08 attention estimate is authored fiction, not telemetry. It is generated locally from a timer, is labelled _STATION ESTIMATE / NOT A REAL AUDIENCE_ wherever it appears, makes no network request, and stores nothing.
+
 All characters, setting and incident are original fiction. The coastal-crime mood is inspired by the requested GTA reference; there are no GTA logos, Rockstar art or named franchise characters. No previous competition project's artwork or competitor imagery was used.
 
 Lucide supplies interface icons and favicon under its bundled license in `docs/LUCIDE-LICENSE.txt`.
@@ -68,9 +76,19 @@ which keeps the flat panel at exactly `#0b1319`) at 182,474 B.
 
 Captured on 17 September 2026 from the local Next production build (`npm run build:vercel`) driven with Playwright 1.62.1 / Chromium. Everything here is a real browser capture of the shipped application; nothing is a mockup, a composite, or a reconstruction.
 
-| Asset | Origin | License / use basis | Notes |
-| --- | --- | --- | --- |
-| `docs/screenshots/*.webp` | Captured at 1280 × 720 and 390 × 844, then encoded with `cwebp` 1.6.0 at quality 86, method 6 | Team-created product documentation | Thirteen judge-facing states: arrival, station uplink, callsign, live feed, the untouched plate in the editor, the same plate carrying a real draw stroke, the control room, on air, the caller, the fixer's warning, the closing shot, replay, and the phone layout. |
-| `public/dead-air.gif` | Recorded as video from one continuous run of that build, then encoded with `ffmpeg` and `gifsicle` 1.96 | Team-created product demonstration | 19 seconds at 780 px, 8 fps. A single unbroken take: the frozen plate in React Image Editor, a coral stroke traced across the mascot, the editor's own Save, the exact saved image appearing in Preview, TAKE LIVE, and that same image on the on-air monitor. No cuts, no speed changes, no substituted frames. |
+| Asset                     | Origin                                                                                                  | License / use basis                | Notes                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/screenshots/*.webp` | Captured at 1280 × 720 and 390 × 844, then encoded with `cwebp` 1.6.0 at quality 86, method 6           | Team-created product documentation | Thirteen judge-facing states: arrival, station uplink, callsign, live feed, the untouched plate in the editor, the same plate carrying a real draw stroke, the control room, on air, the caller, the fixer's warning, the closing shot, replay, and the phone layout.                                                                                                                                                         |
+| `public/dead-air.gif`     | Recorded as video from one continuous run of that build, then encoded with `ffmpeg` and `gifsicle` 1.96 | Team-created product demonstration | 18 seconds at 780 px, 7 fps, 128-colour palette, 2,704,050 B. A single unbroken take: the frozen plate in React Image Editor, a coral ring traced round the mascot, the editor's own Save, the exact saved image appearing in PREVIEW / YOUR CUT, TAKE LIVE, and that same image on the on-air monitor. No cuts, no speed changes, no substituted frames; only the pre-roll before the editor opens is trimmed off the front. |
 
 The three-capture propagation strip in the README (`05-editor-source`, `06-editor-marked`, `08-onair`) comes from that same run, so the stroke shown mid-edit is the stroke shown on air.
+
+### Re-captured 17 September 2026
+
+The interface pass rebalanced the control desk, recomposed the station ident and the closing
+sign-off, rebuilt the boot terminal's exit control, and added the attention meter and the paid
+programming — which changed every screen that appears in the media above. **All thirteen
+screenshots and the GIF were therefore re-recorded from a fresh production build in one run**, so
+nothing in this repository documents a screen that no longer exists. The intermediate PNGs kept
+next to `05-editor-source`, `06-editor-marked` and `08-onair` are the unencoded sources of those
+three WebP files from the same capture.

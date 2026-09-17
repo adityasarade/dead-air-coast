@@ -1,17 +1,31 @@
 # Status — Dead Air
 
-**State:** Shipped. Public source and the live build are in sync; entrant-account actions remain.
+**State:** Shipped, with an interface and world-building pass sitting in the working tree.
+
+The published commit `4297481` and the live build at the canonical URL are in sync with each other. The changes described under "The interface and world-building pass changed" below are **not committed and not deployed** — they are verified locally against the Next production build and are waiting on a commit and a redeploy. Everything under "Confirmed against the live production build" refers to `4297481`.
 
 The canonical URL is **https://dead-air-coast.vercel.app**. The project's earlier generated hostname still resolves to the same deployment.
 
 ## Verified 17 September 2026 (IST)
 
-- `npm run lint`, `npm test` (20 tests: 9 broadcast-reducer, 11 editor-gate), `npm run build` (Vinext) and `npm run build:vercel` (the deploying Next build) all pass. `npx tsc --noEmit` is clean after `build:vercel`.
-- A full browser walk of the Next production build at 1440 × 900 and 390 × 844: boot, callsign, live feed, freeze-and-edit, a real draw stroke, the editor's own Save, Preview, TAKE LIVE, the caller, the fixer's warning, the sign-off, replay, the episode card download, and RUN ANOTHER NIGHT. Zero page errors, zero console errors, no horizontal overflow at 390 px.
-- An untouched Save is still refused, and the refusal now has five independent signals with a documented fail-open: an unreadable editor runtime lets the save through rather than blaming the visitor.
-- Thirteen screenshots and a 19-second single-take GIF were captured from that build and are in the README.
+- `npm run lint`, `npm test` (31 tests: 13 broadcast-reducer and attention, 11 editor-gate, 7 station-texture), `npm run build` (Vinext) and `npm run build:vercel` (the deploying Next build) all pass. `npx tsc --noEmit` is clean after `build:vercel`. Prettier is clean on every authored file.
+- A full browser walk of the Next production build at 1280 × 720 and 390 × 844: boot (and skip), callsign, live feed, freeze-and-edit, a real draw stroke, the editor's own Save, Preview, TAKE LIVE, the caller, the fixer's warning, the sign-off, replay, the episode card download, and RUN ANOTHER NIGHT into the carried-over ident. Zero page errors, zero console errors, zero failed same-origin requests, no horizontal overflow at any stage at either width.
+- The on-air monitor holds the visitor's exact saved `data:image/jpeg` URL, byte-identical to what Preview held; it is never a `/art/*` path.
+- An untouched Save is still refused, and the refusal has five independent signals with a documented fail-open: an unreadable editor runtime lets the save through rather than blaming the visitor.
+- Cold load to a usable editor, median of repeated Playwright runs against the local Next production build, before → after the interface pass: 3.09 s → **2.91 s** taking the skip, and 5.50 s → **3.39 s** waiting the terminal out. Throttled to 4 Mbps with 150 ms of latency: 4.84 s → **3.86 s** and 7.84 s → **5.64 s**. The remaining pre-editor time is the boot terminal itself plus the editor runtime's own `createEditor`; the CDN fetch that used to sit in front of it is gone from the critical path.
+- All thirteen screenshots and the demo GIF were re-recorded from this build, because the interface pass changed every screen they show. The GIF is 18 s at 780 px, 7 fps, 2,704,050 B.
 
-## This pass changed
+## The interface and world-building pass changed
+
+- **Speed to the editor.** Unlayer's hosted runtime is pre-injected (its own documented embed URL, behind a `preconnect`) the moment the visitor selects BOOT THE STATION, so the slowest request in the journey overlaps the boot terminal and the callsign field. The terminal runs at 240 ms a line instead of 550 ms, holds 320 ms instead of 800 ms, and its exit is a coral primary button plus Enter and Esc instead of a quiet link.
+- **The control desk.** Preview and programme are now identical 16:9 monitors side by side with the camera rack as a third column; the visitor's saved plate used to sit letterboxed in a 30 %-wide 4:3 panel beside a full-size monitor showing the auto-composed ident. The preview bus lights coral while it holds an unaired cut, and the channel bug no longer doubles the callsign over the ident that already carries it.
+- **Canvas typography.** The ident, the closing shot and the episode card all asked for `Impact`, which does not exist on Linux or Android, and squashed long callsigns through `fillText`'s `maxWidth`. They now share `lib/canvas-type.ts`: predictable stacks, shrink-to-fit measurement, registration marks, scanlines. The ident is a composed slate; the closing shot is a graded band with a framed plate inset. CSS gained a `--display` stack for the same reason.
+- **GTA VI legibility.** Ten original satirical Marlin Key ad spots (`lib/sponsors.ts`) running over the live feed, at the desk, on the closing frame and on the episode card; and EYES ON CH 08, a five-segment attention meter that climbs while you are on air and decides when the fixer's warning arrives. Both are declared fiction on screen and in the README.
+- **States.** Editor runtime and image failures each get their own recovery card inside the frame that failed, with a direct retry. The boot watchdog distinguishes a failure from a slow decode. A measured notice appears when the editor's own canvas collapses at phone width.
+- **Defects fixed on the way:** the episode card printed "EPISODE 01" on every night, including nights reached through RUN ANOTHER NIGHT; the ending screen pushed its own actions below the fold at 720 px; and the closing composite's sign-off printed through the HTML caption floated over it.
+- **Defect mitigated, not fixed:** at 390 px the hosted editor's tool panel plus tool rail are wider than the frame, so opening MARK UP leaves its canvas about 30 px wide. The layout is the editor runtime's and is not restylable from outside. Dead Air gives the frame the full width of the handset, measures the canvas, and pins a notice explaining that landscape restores it (318 px portrait closed, 30 px portrait open, 431 px landscape open).
+
+## The earlier reformatting pass changed
 
 - **Presentation:** every authored source file reformatted from its hand-minified state (`app/page.tsx` 63 → ~1,190 lines; `app/globals.css` 19 → ~1,880 lines), with the stylesheet reordered so each breakpoint appears once. CSS cascade equivalence was verified programmatically across all eight satisfiable media-condition combinations.
 - **Repository:** 117 tracked files reduced to 59. Removed 56 unused shadcn components, `examples/`, `db/`, `drizzle/`, a ChatGPT OAuth helper, a dead Unlayer Elements sheet, two unused Python audio renderers, and 18 unused dependencies.
@@ -31,6 +45,4 @@ The canonical URL is **https://dead-air-coast.vercel.app**. The project's earlie
 - Landing transfer measured at **0.37 MB over 10 requests**, down from 2.45 MB.
 - Zero page errors and zero console errors across the full journey.
 
-**External boundary:** starring the upstream repository, publishing a social post, and submitting the official form require the entrant account. No implementation can guarantee a subjective judging result.
-
-**Next gate:** star the React Image Editor repository, optionally publish the prepared social post, then submit the official form before **24 September 2026 at 23:59 UTC (25 September, 05:29 IST)**.
+**Next gate:** commit and redeploy the working-tree pass, then star the React Image Editor repository, optionally publish the prepared social post, then submit the official form before **24 September 2026 at 23:59 UTC (25 September, 05:29 IST)**.

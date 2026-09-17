@@ -148,6 +148,62 @@ export function cutReducer(c: Cut, a: Action): Cut {
     ],
   };
 }
+/*
+ * Broadcast attention — the station's own guess at how many people are
+ * watching Channel 08.
+ *
+ * This is diegetic fiction and the interface says so: there is no analytics
+ * call, no server, and nothing is counted. It exists because the pressure in
+ * this world is *being noticed*, and a number that climbs while your picture
+ * is out there is the honest way to make that legible. When it fills, the
+ * fixer has found the antenna.
+ */
+
+/** Attention at which the fixer's warning arrives. */
+export const PRESSURE_ATTENTION = 240;
+
+/** How many segments the on-screen meter has. */
+export const ATTENTION_SEGMENTS = 5;
+
+/**
+ * One tick of the estimate. `roll` is a 0..1 sample supplied by the caller, so
+ * the growth curve itself stays a pure function: word of mouth compounds
+ * slowly, which is why the current value feeds back into the increment.
+ */
+export const attentionTick = (current: number, roll: number) =>
+  current + 11 + Math.round(Math.max(0, Math.min(1, roll)) * 15) + Math.floor(current / 60);
+
+/** True once the station is attracting the wrong kind of attention. */
+export const attentionHot = (current: number) => current >= PRESSURE_ATTENTION;
+
+/**
+ * Filled segments of the meter, 0..ATTENTION_SEGMENTS.
+ *
+ * The last segment is reserved for `attentionHot`, so the meter is full only
+ * when the fixer is actually about to call: a bar that reads full while
+ * nothing happens would be a lie about the one number on screen.
+ */
+export const attentionSegments = (current: number) => {
+  if (attentionHot(current)) return ATTENTION_SEGMENTS;
+  if (current <= 0) return 0;
+  return Math.max(
+    1,
+    Math.min(
+      ATTENTION_SEGMENTS - 1,
+      Math.ceil((current / PRESSURE_ATTENTION) * (ATTENTION_SEGMENTS - 1)),
+    ),
+  );
+};
+
+/**
+ * What a second night inherits. People who watched you last night are still
+ * half-watching, so NIGHT 02 does not start from silence — but it is clamped
+ * short of the threshold, because a night that opens with a full meter would
+ * fire the fixer's warning with no build-up at all.
+ */
+export const carriedAttention = (current: number) =>
+  Math.max(0, Math.min(Math.round(current * 0.4), PRESSURE_ATTENTION - 40));
+
 export function ending(c: Cut) {
   return c.pressure === "air"
     ? "They wanted silence. You made television."

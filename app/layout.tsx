@@ -72,6 +72,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/*
+         * React Image Editor's runtime is served from Unlayer's own CDN, and
+         * it is the slowest thing in the journey. The connection is opened on
+         * first paint so the TLS handshake is already done by the time
+         * lib/editor-warmup.ts asks for the embed script.
+         */}
+        <link rel="preconnect" href="https://cdn.unlayer.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://cdn.unlayer.com" />
+      </head>
       <body className="antialiased">{children}</body>
     </html>
   );

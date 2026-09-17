@@ -23,6 +23,7 @@ import {
   Download,
   RotateCcw,
   Check,
+  Eye,
   Volume2,
   VolumeX,
   X,
@@ -35,9 +36,30 @@ import ImageEditor, {
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
-import { cutReducer, emptyCut, ending, type Source } from "@/lib/broadcast";
+import {
+  ATTENTION_SEGMENTS,
+  PRESSURE_ATTENTION,
+  attentionHot,
+  attentionSegments,
+  attentionTick,
+  carriedAttention,
+  cutReducer,
+  emptyCut,
+  ending,
+  type Source,
+} from "@/lib/broadcast";
 import { judgeEditorSave } from "@/lib/editor-gate";
 import { StationAudio } from "@/lib/audio";
+import { warmImageEditor } from "@/lib/editor-warmup";
+import { sponsorAt, sponsors } from "@/lib/sponsors";
+import {
+  DISPLAY_STACK,
+  MONO_STACK,
+  fitText,
+  monoFont,
+  registrationMarks,
+  scanlines,
+} from "@/lib/canvas-type";
 import { BootSequence } from "@/components/dead-air/boot-sequence";
 type Stage =
   | "intro"
@@ -136,8 +158,10 @@ const signalLost =
       Array.from({ length: 14 }, (_, i) => `<path d="M0 ${i * 72 + 36}H1672"/>`).join("") +
       `</g>` +
       `<rect x="596" y="404" width="480" height="134" fill="#e86151"/>` +
-      `<text x="836" y="472" fill="#12191d" font-family="Impact,Arial Black,sans-serif" font-size="58" font-weight="900" text-anchor="middle">SIGNAL LOST</text>` +
-      `<text x="836" y="514" fill="#2b1b16" font-family="ui-monospace,monospace" font-size="21" text-anchor="middle" letter-spacing="3">THIS FEED DID NOT ARRIVE</text>` +
+      // Single-quoted attributes: the font stacks carry double quotes of their
+      // own (see lib/canvas-type.ts), which would close the attribute early.
+      `<text x="836" y="472" fill="#12191d" font-family='${DISPLAY_STACK}' font-size="58" font-weight="900" text-anchor="middle">SIGNAL LOST</text>` +
+      `<text x="836" y="514" fill="#2b1b16" font-family='${MONO_STACK}' font-size="21" text-anchor="middle" letter-spacing="3">THIS FEED DID NOT ARRIVE</text>` +
       `</svg>`,
   );
 
@@ -185,6 +209,32 @@ export default function Home() {
   const [toast, setToast] = useState("");
   const [confirmReload, setConfirmReload] = useState(false);
   /**
+   * The image desk never connected — the hosted runtime, not the picture. It
+   * gets its own recovery card inside the editor frame, because there is
+   * nothing to lose by remounting something that never mounted.
+   */
+  const [editorFailed, setEditorFailed] = useState<"" | "runtime" | "image">("");
+  /**
+   * Broadcast attention: the station's own estimate of how many people are
+   * on Channel 08. Diegetic fiction, labelled as an estimate on screen — see
+   * lib/broadcast.ts. It climbs while the picture is out there and the
+   * fixer's warning arrives when it fills the meter.
+   */
+  const [attention, setAttention] = useState(0);
+  /** Which paid spot is currently on the air. Plain counter; wrapped on read. */
+  const [spot, setSpot] = useState(0);
+  /**
+   * The editor's own canvas has collapsed to nothing.
+   *
+   * Measured, not guessed: on a 390 px viewport the hosted editor lays its
+   * tool panel out at a fixed width next to the tool rail, and the two
+   * together are wider than the frame — so opening MARK UP leaves the canvas
+   * about four pixels wide. That is the editor runtime's layout, not
+   * something this app can restyle from the outside, so it is detected and
+   * explained with a way out instead of being left looking broken.
+   */
+  const [cramped, setCramped] = useState(false);
+  /**
    * The visitor asked to switch to the other camera. They cut that angle in the
    * editor first; the switch is only recorded once their own frame goes live,
    * so the on-air monitor never falls back to raw camera art.
@@ -197,6 +247,15 @@ export default function Home() {
     () =>
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  /**
+   * Phone-width layout. Read once at mount and kept current by the listener in
+   * the mount effect below. Only consumed by surfaces that render long after
+   * hydration (the editor's `minHeight`), so the initial server value never
+   * shows up in the markup.
+   */
+  const [narrow, setNarrow] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 700px)").matches,
   );
   const soundWanted = useRef(false);
   const imageEditorRef = useRef<ImageEditorRef>(null);
@@ -238,9 +297,23 @@ export default function Home() {
     changeTrackingAvailable.current = false;
   }, []);
   const enterCallsign = useCallback(() => setStage("name"), []);
+  /**
+   * Committing to the night is the right moment to start paying for the
+   * editor: the boot terminal and the callsign field are two screens of
+   * unavoidable waiting, and Unlayer's hosted runtime can download through
+   * both of them instead of after them. The default angle's canonical PNG
+   * follows at low priority, behind the runtime. See lib/editor-warmup.ts.
+   */
+  const bootStation = useCallback(() => {
+    warmImageEditor(art.dock);
+    setStage("boot");
+  }, []);
   const station = (alias.trim() || "AFTER HOURS").toUpperCase() + " TV";
   const isEditor = stage === "ident" || stage === "edit";
   const nightLabel = String(night).padStart(2, "0");
+  const sponsor = sponsorAt(spot);
+  const segments = attentionSegments(attention);
+  const hot = attentionHot(attention);
   /*
    * Replay bounds. `retry()` can shorten the recorded episode, so the index is
    * clamped on read as well as reset on retry: nothing here may ever
@@ -253,6 +326,9 @@ export default function Home() {
     const m = window.matchMedia("(prefers-reduced-motion: reduce)");
     const change = () => setReduced(m.matches);
     m.addEventListener("change", change);
+    const phone = window.matchMedia("(max-width: 700px)");
+    const resize = () => setNarrow(phone.matches);
+    phone.addEventListener("change", resize);
     audio.current = new StationAudio(() => {
       soundWanted.current = false;
       setSound(false);
@@ -260,6 +336,7 @@ export default function Home() {
     });
     return () => {
       m.removeEventListener("change", change);
+      phone.removeEventListener("change", resize);
       audio.current?.close();
     };
   }, []);
@@ -336,18 +413,69 @@ export default function Home() {
       for (const name of events) host?.removeEventListener(name, read, true);
     };
   }, [isEditor, editorReady, editorKey, readEditorImage]);
+  /*
+   * Watch the editor's canvas box while the desk is open. Polled rather than
+   * observed because the canvas element is replaced as tools mount, so a
+   * ResizeObserver would have to be re-attached on the same interval anyway.
+   */
+  useEffect(() => {
+    if (!isEditor || !editorReady) {
+      return;
+    }
+    const read = () => {
+      const canvases = editorHost.current?.querySelectorAll("canvas");
+      const last = canvases?.[canvases.length - 1];
+      setCramped(!!last && last.getBoundingClientRect().width < 90);
+    };
+    const first = setTimeout(read, 0);
+    const t = setInterval(read, 400);
+    return () => {
+      clearTimeout(first);
+      clearInterval(t);
+      setCramped(false);
+    };
+  }, [isEditor, editorReady, editorKey]);
   useEffect(() => {
     if (stage !== "watch" || watchPaused || reduced) return;
     const timer = setInterval(() => setSource((s) => (s === "dock" ? "party" : "dock")), 6500);
     return () => clearInterval(timer);
   }, [stage, watchPaused, reduced]);
+  /*
+   * Attention climbs for as long as the visitor's picture is on air. It is the
+   * station's own estimate and the meter says so; nothing is measured and no
+   * request is made. Paused with the stage, so a visitor reading the editor is
+   * not accruing heat they cannot see.
+   */
+  useEffect(() => {
+    if (!live || (stage !== "desk" && stage !== "call")) return;
+    const t = setInterval(() => setAttention((a) => attentionTick(a, Math.random())), 700);
+    return () => clearInterval(t);
+  }, [live, stage]);
+  /*
+   * The fixer arrives when the meter fills, not on a stopwatch: the visitor
+   * can watch the thing that summons him. The 2.5 s arm is a fail-safe, not
+   * the mechanism — it is longer than one attention tick, so while attention
+   * is climbing the threshold always wins, and if attention ever stalls (a
+   * backgrounded tab, a paused clock) the warning still arrives.
+   *
+   * Deliberately independent of `sound`: toggling the music switch must not
+   * restart the interruption.
+   */
   useEffect(() => {
     if (stage !== "desk" || cut.decision === "pending" || cut.pressure !== "pending") return;
-    // Deliberately independent of `sound`: toggling the music switch must not
-    // restart the interruption timer.
-    const timer = setTimeout(() => setPressureOpen(true), 4500);
+    const timer = setTimeout(() => setPressureOpen(true), attentionHot(attention) ? 0 : 2500);
     return () => clearTimeout(timer);
-  }, [stage, cut.decision, cut.pressure]);
+  }, [stage, cut.decision, cut.pressure, attention]);
+  /*
+   * Paid programming rotates on its own, the way a station bug does. Reduced
+   * motion holds one spot and leaves the manual NEXT SPOT control as the only
+   * way through them.
+   */
+  useEffect(() => {
+    if (reduced || (stage !== "desk" && stage !== "watch")) return;
+    const t = setInterval(() => setSpot((s) => s + 1), 8000);
+    return () => clearInterval(t);
+  }, [reduced, stage]);
   /*
    * An image in the server-rendered HTML can fail before React hydrates and
    * attaches its onError, so the error event is simply never delivered. Sweep
@@ -404,6 +532,7 @@ export default function Home() {
     (image: string, kind: "ident" | "edit", back: Stage) => {
       setEditorImage(image);
       setEditorReady(false);
+      setEditorFailed("");
       setEditorKey((k) => k + 1);
       setReturnStage(back);
       setConfirmReload(false);
@@ -417,6 +546,31 @@ export default function Home() {
     setSwitchPending(false);
     setStage(returnStage);
   }, [returnStage]);
+  /**
+   * Remount the image desk from scratch. Used both by the failure card (where
+   * there is nothing to lose, because nothing ever mounted) and by the
+   * confirmed "Discard & reload" in the footer.
+   */
+  const retryEditor = useCallback(() => {
+    setConfirmReload(false);
+    setEditorFailed("");
+    setEditorReady(false);
+    setIssue("");
+    resetEditorGate();
+    setEditorKey((k) => k + 1);
+  }, [resetEditorGate]);
+  /**
+   * The station ident: the first thing the channel puts out, composed here and
+   * handed straight to the visitor to author in Unlayer.
+   *
+   * This used to be one cream slab with `900 92px Impact` on it, horizontally
+   * squashed by `fillText`'s maxWidth whenever a callsign ran long — and Impact
+   * is absent on Linux and Android, so the two platforms without it silently
+   * got an unrelated face. It is now a composed ident: a graded plate, a
+   * channel tab, a shrink-to-fit callsign that keeps its letterforms, a coral
+   * strap, registration marks and scanlines, all in the predictable stacks
+   * from lib/canvas-type.ts.
+   */
   const prepareIdent = async () => {
     setBusy(true);
     setIssue("");
@@ -427,20 +581,61 @@ export default function Home() {
       const im = new window.Image();
       im.src = display.feed.party;
       await im.decode();
+      const W = 1280,
+        H = 720;
       const c = document.createElement("canvas");
-      c.width = 1280;
-      c.height = 720;
+      c.width = W;
+      c.height = H;
       const g = c.getContext("2d")!;
-      g.drawImage(im, 0, 0, 1280, 720);
-      g.fillStyle = "rgba(12,19,24,.50)";
-      g.fillRect(0, 0, 1280, 720);
+      g.drawImage(im, 0, 0, W, H);
+      // Night grade: lightest at the top, deep enough at the bottom that cream
+      // type on it is legible whatever the underlying artwork is doing.
+      const grade = g.createLinearGradient(0, 0, 0, H);
+      grade.addColorStop(0, "rgba(10,17,24,.34)");
+      grade.addColorStop(0.45, "rgba(9,15,21,.56)");
+      grade.addColorStop(1, "rgba(6,11,16,.88)");
+      g.fillStyle = grade;
+      g.fillRect(0, 0, W, H);
+      scanlines(g, W, H, 0.12);
+      // Channel tab and the slate line.
+      g.fillStyle = "#e86151";
+      g.fillRect(64, 56, 104, 40);
+      g.fillStyle = "#13191d";
+      g.font = monoFont(19, 700);
+      g.letterSpacing = "2px";
+      g.fillText("CH 08", 82, 83);
       g.fillStyle = "#f4eddb";
-      g.fillRect(64, 430, 1152, 220);
-      g.fillStyle = "#151c21";
-      g.font = "900 92px Impact, sans-serif";
-      g.fillText(station, 92, 544, 1096);
-      g.font = "26px monospace";
-      g.fillText("YOUR COAST. YOUR CUT.", 96, 603);
+      g.font = monoFont(19);
+      g.fillText("MARLIN KEY · 20:46 · PIRATE TELEVISION", 186, 83);
+      // The ident plate. Deliberately not full width: the auction behind it is
+      // the reason the channel exists, so it stays visible.
+      const plateX = 64,
+        plateW = 768,
+        plateY = 402,
+        plateH = 152;
+      g.fillStyle = "#f4eddb";
+      g.fillRect(plateX, plateY, plateW, plateH);
+      g.fillStyle = "#e86151";
+      g.fillRect(plateX, plateY, 12, plateH);
+      g.letterSpacing = "1px";
+      const size = fitText(g, station, plateW - 84, 84, 26);
+      g.fillStyle = "#12191f";
+      g.fillText(station, plateX + 44, plateY + plateH / 2 + size * 0.35, plateW - 84);
+      // Coral strap under the plate carries the channel's one promise.
+      g.fillStyle = "#e86151";
+      g.fillRect(plateX, plateY + plateH, plateW, 48);
+      g.fillStyle = "#1b1012";
+      g.font = monoFont(20, 700);
+      g.letterSpacing = "7px";
+      g.fillText("YOUR COAST. YOUR CUT.", plateX + 44, plateY + plateH + 32);
+      g.fillStyle = "#e6e0ce";
+      g.font = monoFont(17);
+      g.letterSpacing = "3px";
+      g.textAlign = "right";
+      g.fillText("INDEPENDENT COASTAL TELEVISION", W - 64, H - 62);
+      g.textAlign = "left";
+      g.letterSpacing = "0px";
+      registrationMarks(g, W, H);
       dispatch({ type: "ident", image: c.toDataURL("image/png") });
       setSource("dock");
       setStage("watch");
@@ -575,21 +770,54 @@ export default function Home() {
       background.src = display.getaway;
       plate.src = unaired || cut.shots.filter((s) => s.kind === "plate").at(-1)?.image || cut.onAir;
       await Promise.all([background.decode(), plate.decode()]);
+      const W = 1280,
+        H = 720;
       const c = document.createElement("canvas");
-      c.width = 1280;
-      c.height = 720;
+      c.width = W;
+      c.height = H;
       const g = c.getContext("2d")!;
-      g.drawImage(background, 0, 0, 1280, 720);
-      g.fillStyle = "rgba(8,15,20,.72)";
-      g.fillRect(0, 520, 1280, 200);
+      g.drawImage(background, 0, 0, W, H);
+      // A graded band rather than a flat 72% slab, so the marina behind the
+      // sign-off does not disappear behind a grey rectangle.
+      const band = g.createLinearGradient(0, 350, 0, H);
+      band.addColorStop(0, "rgba(8,15,20,0)");
+      band.addColorStop(0.35, "rgba(8,14,19,.78)");
+      band.addColorStop(1, "rgba(5,10,14,.94)");
+      g.fillStyle = band;
+      g.fillRect(0, 350, W, H - 350);
+      /*
+       * Everything in the sign-off sits above y=620, leaving the bottom band
+       * of the frame clear: the ending screen floats its own caption there,
+       * and the two used to print straight through each other.
+       */
+      g.fillStyle = "#e86151";
+      g.fillRect(42, 452, 10, 96);
+      g.letterSpacing = "1px";
+      const size = fitText(g, station, 690, 58, 22);
       g.fillStyle = "#f4ecdc";
-      g.font = "bold 48px Impact,sans-serif";
-      g.fillText(station, 42, 585, 600);
-      g.font = "22px monospace";
-      g.fillText(cut.pressure === "air" ? "THE CITY HEARD YOU." : "THE PICTURE GOT OUT.", 42, 632);
+      g.fillText(station, 74, 452 + size * 0.82, 690);
+      g.font = monoFont(21);
+      g.letterSpacing = "4px";
+      g.fillText(cut.pressure === "air" ? "THE CITY HEARD YOU." : "THE PICTURE GOT OUT.", 74, 528);
+      g.fillStyle = "#b8c2c4";
+      g.font = monoFont(15);
+      g.letterSpacing = "2px";
+      g.fillText("PAID FOR BY " + sponsor.name, 74, 572);
+      g.letterSpacing = "0px";
+      // The visitor's plate, framed and captioned, as the thing the night was
+      // actually about. 332 x 187 is 16:9, so the export is not letterboxed.
       g.fillStyle = "#f4ecdc";
-      g.fillRect(890, 490, 340, 196);
-      g.drawImage(plate, 898, 498, 324, 180);
+      g.fillRect(886, 378, 348, 222);
+      g.fillStyle = "#0a1216";
+      g.fillRect(894, 386, 332, 187);
+      g.drawImage(plate, 894, 386, 332, 187);
+      g.fillStyle = "#e86151";
+      g.fillRect(886, 378, 348, 7);
+      g.fillStyle = "#12191f";
+      g.font = monoFont(13, 700);
+      g.letterSpacing = "2px";
+      g.fillText("YOUR CUT / CH 08", 894, 592);
+      g.letterSpacing = "0px";
       dispatch({ type: "close", image: c.toDataURL("image/png") });
       setStage("ending");
       setLive(false);
@@ -623,7 +851,10 @@ export default function Home() {
     setBusy(true);
     try {
       const { makeEpisodeCard } = await import("@/lib/episode-card");
-      const card = await makeEpisodeCard(station, cut);
+      // The card used to print "EPISODE 01" on every night, including the ones
+      // reached through RUN ANOTHER NIGHT, so it disagreed with the heading it
+      // was exported from.
+      const card = await makeEpisodeCard(station, cut, night, sponsor);
       download(card, "dead-air-" + slug(station) + "-episode-card.png");
       setToast("Episode card developed. Your exact cut is inside it.");
     } catch {
@@ -635,6 +866,10 @@ export default function Home() {
   const retry = () => {
     setElapsed(0);
     setLive(true);
+    // The night rewinds to the interruption, so the attention that summoned
+    // the fixer rewinds with it — otherwise a full meter would fire the
+    // warning the instant the caller is answered again.
+    setAttention(Math.round(PRESSURE_ATTENTION * 0.45));
     setPlaying(false);
     // rewind() shortens the recorded episode, so the replay head goes back to
     // the top rather than pointing past the end of it.
@@ -662,6 +897,10 @@ export default function Home() {
     setWatchPaused(false);
     setCutStyle("hard");
     setSource("dock");
+    // People who watched last night are still half-watching, so NIGHT 02 does
+    // not open in silence — and the fixer has less of a climb to make.
+    setAttention(carriedAttention);
+    setSpot((s) => s + 1);
     dispatch({ type: "ident", image: cut.ident });
     setNight((n) => n + 1);
     setStage("watch");
@@ -770,7 +1009,9 @@ export default function Home() {
           <strong>You run the broadcast.</strong>
           <p>
             Catch a camera moment and freeze it. Make your edit in Unlayer, then go live. Handle the
-            caller and the warning at your van. Your cuts decide what the city sees.
+            caller and the warning at your van. Your cuts decide what the city sees. The EYES ON CH
+            08 meter is the station’s own guess at who is watching — it is part of the fiction, not
+            a real audience — and when it fills, someone comes looking for the antenna.
           </p>
           <button className="quiet" onClick={() => setHelp(false)}>
             Got it <X size={16} />
@@ -814,7 +1055,7 @@ export default function Home() {
             <span className="eyebrow">MARLIN KEY / 20:46</span>
             <h2>The city’s watching.</h2>
             <p>Give it something worth seeing.</p>
-            <button className="primary" onClick={() => setStage("boot")}>
+            <button className="primary" onClick={bootStation}>
               BOOT THE STATION <ArrowUpRight size={20} />
             </button>
             <small>A five-minute broadcast. Yours to run.</small>
@@ -908,6 +1149,12 @@ export default function Home() {
               {watchPaused ? <Play size={17} /> : <Pause size={17} />}
             </button>
           </div>
+          {/* The channel's own ad break, running over the feed as a bug. */}
+          <div className="feed-sponsor" key={"feed-spot-" + spot}>
+            <span>PAID PROGRAMMING · CH 08</span>
+            <strong>{sponsor.name}</strong>
+            <em>“{sponsor.line}”</em>
+          </div>
           <div className="watch-caption" key={"caption-" + source}>
             <span className="eyebrow">
               {source === "dock"
@@ -1000,24 +1247,76 @@ export default function Home() {
               : "Reframe the moment. Mark up the detail or drop a lower third on it. Your exact saved image goes to Preview."}{" "}
             <b>An untouched frame cannot air. Finish with Save inside the editor.</b>
           </p>
+          {/* Phone-only, via CSS: at 390 px the rail, the canvas and the Save
+              control are all on screen but tight, and turning the handset
+              sideways roughly doubles the usable canvas. */}
+          <p className="editor-phone-hint">
+            Tight on a phone? Turn it sideways. Tools run down the left edge, and at this width the
+            editor’s own controls collapse to icons: <b>✕</b> cancels, <b>✓</b> saves.
+          </p>
           <div className="editor-host" ref={editorHost} aria-busy={!editorReady || busy}>
-            {!editorReady && <div className="editor-loading">Opening the image desk…</div>}
+            {!editorReady && !editorFailed && (
+              <div className="editor-loading">
+                <span className="editor-loading-bar" aria-hidden="true" />
+                OPENING THE IMAGE DESK…
+                <small>Unlayer React Image Editor is coming up on Channel 08.</small>
+              </div>
+            )}
+            {/*
+             * Two different failures, two different sentences, one recovery
+             * control. This used to be a dismissible notice at the top of the
+             * page whose only cure was a footer link that then asked for
+             * confirmation — on a desk that had never opened, so there was
+             * nothing to confirm.
+             */}
+            {editorFailed && (
+              <div className="editor-down" role="alert">
+                <span className="eyebrow">IMAGE DESK / NO CARRIER</span>
+                <h2>
+                  {editorFailed === "runtime"
+                    ? "The image desk did not connect."
+                    : "This frame did not reach the desk."}
+                </h2>
+                <p>
+                  {editorFailed === "runtime"
+                    ? "React Image Editor runs from Unlayer’s own CDN, so this step needs network access. Nothing of yours is lost — the plate was never opened."
+                    : "The camera plate could not be decoded into the canvas. Retrying refetches it from this station, same origin, full resolution."}
+                </p>
+                <div className="editor-down-actions">
+                  <button className="primary" onClick={retryEditor}>
+                    TRY THE DESK AGAIN <RotateCcw size={16} />
+                  </button>
+                  <button className="quiet" onClick={leaveEditor}>
+                    <ArrowLeft size={16} /> Back without editing
+                  </button>
+                </div>
+              </div>
+            )}
+            {cramped && (
+              <div className="editor-cramped" role="status">
+                <strong>No room left for the picture.</strong>
+                <span>
+                  That panel is wider than this screen. Turn the phone sideways for a full canvas,
+                  or close the panel with its × to get the frame back.
+                </span>
+              </div>
+            )}
             {editorImage && (
               <ImageEditor
                 ref={imageEditorRef}
                 key={editorKey}
                 image={editorImage}
                 options={options}
-                minHeight={570}
+                /* A phone gives the canvas every pixel the chrome does not
+                   need; the desktop desk keeps the taller frame. Changing
+                   minHeight is a style change, not an `options` change, so it
+                   cannot remount the editor or discard an edit. */
+                minHeight={narrow ? 520 : 570}
                 onLoad={onEditorLoad}
                 onSave={onSave}
                 onCancel={leaveEditor}
-                onError={() =>
-                  setIssue("The editor could not connect. Reload the image desk to try again.")
-                }
-                onLoadError={() =>
-                  setIssue("This image could not load. Return and open the image again.")
-                }
+                onError={() => setEditorFailed("runtime")}
+                onLoadError={() => setEditorFailed("image")}
               />
             )}
           </div>
@@ -1028,15 +1327,7 @@ export default function Home() {
             {confirmReload ? (
               <span className="reload-confirm" role="status">
                 Reloading clears the edits you have not saved.
-                <button
-                  className="quiet reload-danger"
-                  onClick={() => {
-                    setConfirmReload(false);
-                    setEditorReady(false);
-                    resetEditorGate();
-                    setEditorKey((k) => k + 1);
-                  }}
-                >
+                <button className="quiet reload-danger" onClick={retryEditor}>
                   Discard & reload
                 </button>
                 <button className="quiet" onClick={() => setConfirmReload(false)}>
@@ -1140,7 +1431,29 @@ export default function Home() {
         <section className="studio">
           <div className="studio-caption">
             <span className="eyebrow">MARLIN KEY AUCTION / CONTROL ROOM</span>
-            <span>
+            {/*
+             * Broadcast attention. The pressure in this world is being
+             * noticed, so the thing that summons the fixer is on screen and
+             * filling, not hidden in a timer. It is labelled as the station's
+             * own estimate because that is all it is: see lib/broadcast.ts —
+             * nothing is measured, nothing is requested, no one is counted.
+             */}
+            <div className={"attention" + (hot ? " attention-hot" : "")}>
+              <Eye size={15} />
+              <span className="attention-label">EYES ON CH 08</span>
+              <span className="attention-count">{attention.toLocaleString("en-US")}</span>
+              <span className="attention-bars" aria-hidden="true">
+                {Array.from({ length: ATTENTION_SEGMENTS }, (_, i) => (
+                  <i key={i} className={i < segments ? "on" : ""} />
+                ))}
+              </span>
+              <small>
+                {hot
+                  ? "SOMEONE IS TRIANGULATING THE ANTENNA"
+                  : "STATION ESTIMATE / NOT A REAL AUDIENCE"}
+              </small>
+            </div>
+            <span className="studio-clock">
               {live ? "ON AIR" : "STANDING BY"} ·{" "}
               {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
               {String(elapsed % 60).padStart(2, "0")}
@@ -1200,7 +1513,8 @@ export default function Home() {
               ) : (
                 <>
                   <div className="monitor-label">
-                    PREVIEW <span>NOT ON AIR</span>
+                    <span className="preview-dot" />
+                    PREVIEW / YOUR CUT <span>NOT ON AIR</span>
                   </div>
                   {/* eslint-disable-next-line @next/next/no-img-element -- saved editor output is a data: URL; see file header. */}
                   <img
@@ -1277,7 +1591,11 @@ export default function Home() {
                   alt="The exact image currently on air"
                   onError={feedError("The on-air image")}
                 />
-                <span className="station-bug">{station}</span>
+                {/* The channel bug belongs on programme. While the monitor is
+                    holding the station ident — which already carries the
+                    callsign, in the visitor's own artwork — a second copy of
+                    the same name on top of it is just noise. */}
+                {live && <span className="station-bug">{station}</span>}
               </div>
               <div className="onair-foot">
                 {stage === "call"
@@ -1285,7 +1603,9 @@ export default function Home() {
                   : cut.corrected
                     ? "REVISED PLATE / ON AIR"
                     : "YOUR COAST. YOUR CUT."}
-                <span>CH 08</span>
+                <span>
+                  {live ? attention.toLocaleString("en-US") + " WATCHING · CH 08" : "CH 08"}
+                </span>
               </div>
             </div>
             <div className="camera-strip">
@@ -1323,6 +1643,22 @@ export default function Home() {
               ))}
             </div>
           </div>
+          {/*
+           * Paid programming. A pirate station still has to sell airtime, and
+           * in Marlin Key the only businesses buying it are the fronts — so
+           * the ad breaks are where the town describes itself. Ten original
+           * spots in lib/sponsors.ts; this one rotates every eight seconds,
+           * or on request under reduced motion.
+           */}
+          <div className="sponsor-strip" key={"spot-" + spot}>
+            <span className="sponsor-tag">PAID PROGRAMMING</span>
+            <span className="sponsor-name">{sponsor.name}</span>
+            <span className="sponsor-line">“{sponsor.line}”</span>
+            <span className="sponsor-strap">{sponsor.strap}</span>
+            <button className="quiet sponsor-next" onClick={() => setSpot((value) => value + 1)}>
+              NEXT SPOT <ArrowUpRight size={14} />
+            </button>
+          </div>
           <div className="direction-strip">
             <p>
               {stage === "call"
@@ -1332,7 +1668,9 @@ export default function Home() {
                   : switchPending
                     ? "Take your new angle live to switch cameras."
                     : cut.decision !== "pending"
-                      ? "An unknown number has your attention."
+                      ? hot
+                        ? "Too many eyes on Channel 08. Someone has found the antenna."
+                        : "The channel is filling up. An unknown number is dialling."
                       : live
                         ? "The night has another angle."
                         : "Your next click puts this picture on air."}
@@ -1467,11 +1805,18 @@ export default function Home() {
               <RotateCcw size={16} /> Recut from interruption
             </button>
           </div>
+          <div className="episode-sponsor">
+            <span className="eyebrow">TONIGHT’S BROADCAST WAS PAID FOR BY</span>
+            <strong>{sponsor.name}</strong>
+            <p>“{sponsor.line}”</p>
+            <small>{sponsor.strap}</small>
+          </div>
           <p className="episode-note">
             Your saved artwork, callsign, choices, and closing frame become one downloadable episode
             card. <b>RUN ANOTHER NIGHT</b> keeps your station ident and takes you back to the
             cameras, so you can try the other angle, the other caller answer and the other warning
-            choice. Everything stays in this tab.
+            choice. Everything stays in this tab. Channel 08 sells airtime to {sponsors.length}{" "}
+            Marlin Key businesses, none of which exist.
           </p>
         </section>
       )}

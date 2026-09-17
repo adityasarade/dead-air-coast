@@ -14,7 +14,7 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "format": "prettier --write \"**/*.{ts,tsx,css,mjs,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,css,mjs,json,md}\"",
-    "test": "node --test tests/broadcast.test.mjs tests/editor-gate.test.mjs"
+    "test": "node --test tests/broadcast.test.mjs tests/editor-gate.test.mjs tests/station-texture.test.mjs"
   },
   "dependencies": {
     "@unlayer/react-image-editor": "^1.0.2",
