@@ -1,0 +1,11 @@
+.next
+.vinext
+dist
+node_modules
+package-lock.json
+public
+vendor
+
+# Vendored verbatim from the shadcn registry - kept byte-identical to the
+# upstream source, so Prettier must not reformat them.
+components/ui

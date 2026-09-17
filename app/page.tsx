@@ -1,63 +1,1497 @@
-/* eslint-disable @next/next/no-img-element -- original artwork and user data URLs must render without image-proxy rewriting. */
+/*
+ * Plain <img> is deliberate throughout this file, so every element below carries
+ * its own eslint-disable-next-line rather than a blanket file-wide disable:
+ *
+ *   - Editable sources handed to Unlayer React Image Editor must stay the exact
+ *     same-origin PNG. next/image would rewrite the URL through the optimizer
+ *     and the editor would receive a re-encoded plate.
+ *   - Saved editor output and the composited canvases are `data:` URLs, which
+ *     next/image cannot accept.
+ *   - The pre-encoded WebP derivatives in /art/display are already sized for
+ *     their surface, so a second optimization pass would only add latency.
+ */
 "use client";
-import {useCallback,useEffect,useReducer,useRef,useState} from 'react';
-import {ArrowLeft,ArrowUpRight,Radio,Phone,Pause,Play,Pencil,Download,RotateCcw,Check,Volume2,VolumeX,X} from 'lucide-react';
-import {flushSync} from 'react-dom';
-import ImageEditor,{type ImageEditorRef,type ImageEditorSaveResult} from '@unlayer/react-image-editor';
-import {Switch} from '@/components/ui/switch';
-import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
-import {Slider} from '@/components/ui/slider';
-import {cutReducer,emptyCut,ending,type Source} from '@/lib/broadcast';
-import {StationAudio} from '@/lib/audio';
-import {BootSequence} from '@/components/dead-air/boot-sequence';
-type Stage='intro'|'boot'|'name'|'watch'|'ident'|'source'|'edit'|'desk'|'call'|'ending'|'replay';
-const art={opening:'/art/opening.png',dock:'/art/dock.png',party:'/art/party-v2.png',fixer:'/art/fixer.png',getaway:'/art/getaway.png'};
-const options={theme:'dark' as const,aiAssistantOpenState:'closed' as const,features:{imageEditor:{dock:'left' as const,tools:{filter:true,crop:true,draw:true,text:true,stickers:true,frame:true,resize:false}}}};
-function download(blob:Blob,name:string){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),2000);}
-export default function Home(){
- const [stage,setStage]=useState<Stage>('intro');const [alias,setAlias]=useState('ADITYA');const [cut,dispatch]=useReducer(cutReducer,emptyCut);const [source,setSource]=useState<Source>('dock');const [editorImage,setEditorImage]=useState('');const [returnStage,setReturnStage]=useState<Stage>('source');const [editorReady,setEditorReady]=useState(false);const [editorKey,setEditorKey]=useState(0);const [issue,setIssue]=useState('');const [busy,setBusy]=useState(false);const [sound,setSound]=useState(false);const [musicLoading,setMusicLoading]=useState(false);const [help,setHelp]=useState(false);const [elapsed,setElapsed]=useState(0);const [live,setLive]=useState(false);const [replayIndex,setReplayIndex]=useState(0);const [playing,setPlaying]=useState(false);const [assetError,setAssetError]=useState(false);const audio=useRef<StationAudio|null>(null);const soundRequest=useRef(0);const heading=useRef<HTMLHeadingElement>(null);
- const [watchPaused,setWatchPaused]=useState(false);const [pressureOpen,setPressureOpen]=useState(false);const [transmission,setTransmission]=useState(false);const [toast,setToast]=useState('');const [cutStyle,setCutStyle]=useState<'hard'|'dissolve'>('hard');const [reduced,setReduced]=useState(()=>typeof window!=='undefined'&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);const soundWanted=useRef(false);const imageEditorRef=useRef<ImageEditorRef>(null);
- const enterCallsign=useCallback(()=>setStage('name'),[]);
- const station=(alias.trim()||'AFTER HOURS').toUpperCase()+' TV';
- useEffect(()=>{const m=window.matchMedia('(prefers-reduced-motion: reduce)');const change=()=>setReduced(m.matches);m.addEventListener('change',change);audio.current=new StationAudio(()=>{soundWanted.current=false;setSound(false);setMusicLoading(false);});return()=>{m.removeEventListener('change',change);audio.current?.close();};},[]);
- useEffect(()=>{audio.current?.setScene(pressureOpen?'pressure':stage);if(!pressureOpen)heading.current?.focus();},[stage,pressureOpen]);
- useEffect(()=>{if(!live||stage!=='desk'||cut.decision!=='pending')return;const t=setInterval(()=>setElapsed(current=>{const next=current+1;if(next>=5)setStage('call');return next;}),1000);return()=>clearInterval(t);},[live,stage,cut.decision]);
- useEffect(()=>{if(!playing||stage!=='replay')return;const t=setInterval(()=>setReplayIndex(i=>{if(i>=cut.shots.length-1){setPlaying(false);return i;}return i+1;}),4200);return()=>clearInterval(t);},[playing,stage,cut.shots.length]);
- useEffect(()=>{if(stage!=='watch'||watchPaused||reduced)return;const timer=setInterval(()=>setSource(s=>s==='dock'?'party':'dock'),6500);return()=>clearInterval(timer);},[stage,watchPaused,reduced]);
- useEffect(()=>{if(stage!=='desk'||cut.decision==='pending'||cut.pressure!=='pending')return;const timer=setTimeout(()=>{setPressureOpen(true);if(sound)audio.current?.cue('message');},4500);return()=>clearTimeout(timer);},[stage,cut.decision,cut.pressure,sound]);
- useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),3200);return()=>clearTimeout(t);},[toast]);
- useEffect(()=>{if(!transmission)return;const t=setTimeout(()=>setTransmission(false),650);return()=>clearTimeout(t);},[transmission]);
- const toggleSound=async(next:boolean)=>{const request=++soundRequest.current;soundWanted.current=next;setSound(next);setMusicLoading(next);if(!next){audio.current?.stop();return;}try{await audio.current?.start();if(request!==soundRequest.current&&!soundWanted.current)audio.current?.stop();if(request===soundRequest.current)setMusicLoading(false);}catch{if(request!==soundRequest.current)return;setSound(false);setMusicLoading(false);setIssue('Music could not load. You can keep broadcasting and try again.');}};
- const openEditor=useCallback((image:string,kind:'ident'|'edit',back:Stage)=>{setEditorImage(image);setEditorReady(false);setEditorKey(k=>k+1);setReturnStage(back);setStage(kind);},[]);
- const prepareIdent=async()=>{setBusy(true);setIssue('');try{const im=new window.Image();im.src=art.party;await im.decode();const dock=new window.Image();dock.src=art.dock;await dock.decode();const c=document.createElement('canvas');c.width=1280;c.height=720;const g=c.getContext('2d')!;g.drawImage(im,0,0,1280,720);g.fillStyle='rgba(12,19,24,.50)';g.fillRect(0,0,1280,720);g.fillStyle='#f4eddb';g.fillRect(64,430,1152,220);g.fillStyle='#151c21';g.font='900 92px Impact, sans-serif';g.fillText(station,92,544,1096);g.font='26px monospace';g.fillText('YOUR COAST. YOUR CUT.',96,603);dispatch({type:'ident',image:c.toDataURL('image/png')});setSource('dock');setStage('watch');}catch{setIssue('The station artwork could not load. Check your connection and try again.');}finally{setBusy(false);}};
- const onSave=async({dataUrl,blob}:ImageEditorSaveResult)=>{setBusy(true);setIssue('');try{await new Promise<void>(resolve=>window.requestAnimationFrame(()=>window.requestAnimationFrame(()=>resolve())));if(!imageEditorRef.current?.editor?.hasChanges())throw Error(stage==='ident'?'Make the ident yours before saving. Add a tag, filter, crop, mark, sticker, or frame.':'The city needs your cut, not the untouched camera feed. Make one visible edit before saving.');if(!blob||!dataUrl.startsWith('data:image/'))throw Error('The image was not saved. Please try again.');const im=new window.Image();im.src=dataUrl;await im.decode();if(!im.naturalWidth)throw Error('The saved image is empty.');if(stage==='ident'){dispatch({type:'ident',image:dataUrl});setStage('source');setToast('Your ident is ready to hit the city.');}else{dispatch({type:'save',image:dataUrl,source});setStage('desk');setToast('Your cut is ready. Put it on air.');}}catch(e){setIssue(e instanceof Error?e.message:'Save failed. Your current broadcast is safe.');}finally{setBusy(false);}};
- const takeLive=()=>{setTransmission(true);setToast('SIGNAL OUT / Your picture is on air.');if(sound)audio.current?.cue('live');dispatch({type:'live'});setLive(true);setElapsed(0);setStage('desk');};
- const decide=(decision:'call'|'hold'|'switch')=>{dispatch({type:'decide',decision,image:art[cut.source==='dock'?'party':'dock']});setStage('desk');setToast(decision==='call'?'Caller patched through. Someone else is listening.':decision==='switch'?'Camera switched. The night is changing.':'You held your picture. The line stays open.');};
- const finish=async()=>{if(cut.pressure==='pending'){setPressureOpen(true);return;}setBusy(true);try{const background=new window.Image(),plate=new window.Image();background.src=art.getaway;plate.src=cut.shots.filter(s=>s.kind==='plate').at(-1)?.image||cut.onAir;await Promise.all([background.decode(),plate.decode()]);const c=document.createElement('canvas');c.width=1280;c.height=720;const g=c.getContext('2d')!;g.drawImage(background,0,0,1280,720);g.fillStyle='rgba(8,15,20,.72)';g.fillRect(0,520,1280,200);g.fillStyle='#f4ecdc';g.font='bold 48px Impact,sans-serif';g.fillText(station,42,585,600);g.font='22px monospace';g.fillText(cut.pressure==='air'?'THE CITY HEARD YOU.':'THE PICTURE GOT OUT.',42,632);g.fillStyle='#f4ecdc';g.fillRect(890,490,340,196);g.drawImage(plate,898,498,324,180);dispatch({type:'close',image:c.toDataURL('image/png')});setStage('ending');setLive(false);if(sound)audio.current?.cue('cut');}catch{setIssue('The closing shot could not load. Your broadcast is safe; try sign-off again.');}finally{setBusy(false);}};
- const handlePressure=(choice:'air'|'protect')=>{dispatch({type:'pressure',choice,image:art.fixer});setPressureOpen(false);setToast(choice==='air'?'Warning recorded. Time to leave the marina.':'Source protected. Get the picture out.');if(sound)audio.current?.cue('cut');};
- const saveStill=async()=>{try{const im=stage==='replay'?cut.shots[replayIndex].image:cut.shots.at(-1)?.image||cut.onAir;const b=await(await fetch(im)).blob();download(b,'dead-air-'+station.toLowerCase().replaceAll(' ','-')+'.png');}catch{setIssue('This frame could not download. Please try again.');}};
- const saveCard=async()=>{setBusy(true);try{const {makeEpisodeCard}=await import('@/lib/episode-card');const card=await makeEpisodeCard(station,cut);download(card,'dead-air-'+station.toLowerCase().replaceAll(' ','-')+'-episode-card.png');setToast('Episode card developed. Your exact cut is inside it.');}catch{setIssue('The episode card could not export. Your replay is still available.');}finally{setBusy(false);}};
- const retry=()=>{setElapsed(0);setLive(true);setPlaying(false);setPressureOpen(false);dispatch({type:'rewind'});setStage('call');};
- const stateRef=useRef({stage,cut});useEffect(()=>{stateRef.current={stage,cut};},[stage,cut]);
- useEffect(()=>{const context=(document as Document&{modelContext?:{registerTool:(t:unknown,o:unknown)=>unknown}}).modelContext;if(!context?.registerTool)return;const lifecycle=new AbortController();const register=(t:unknown)=>{try{void Promise.resolve(context.registerTool(t,{signal:lifecycle.signal})).catch(()=>{});}catch{}};
- register({name:'read_broadcast_state',description:'Read the actual broadcast stage and recorded cut count. Does not return personal artwork.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:()=>({stage:stateRef.current.stage,cuts:stateRef.current.cut.shots.length,decision:stateRef.current.cut.decision})});
- register({name:'start_episode_replay',description:'Start playback of the completed episode already recorded in this tab. Does not create or alter images.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:false},execute:(input:unknown)=>{if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).length)throw Error('Expected an empty object.');if(!['ending','replay'].includes(stateRef.current.stage))throw Error('Sign off the broadcast first.');flushSync(()=>{setReplayIndex(0);setPlaying(true);setStage('replay');});return {stage:stateRef.current.stage,cuts:stateRef.current.cut.shots.length};}});return()=>lifecycle.abort();},[]);
- const isEditor=stage==='ident'||stage==='edit';const replayShot=cut.shots[replayIndex];
- return <main className={'app stage-'+stage+' cut-'+cutStyle+(transmission?' transmitting':'')}>
- {transmission&&<div className="transmission-wipe" aria-hidden="true"><Radio/> SIGNAL OUT</div>}
- {toast&&<div className="broadcast-toast" role="status"><Radio size={18}/>{toast}</div>}
- <Dialog open={pressureOpen} onOpenChange={setPressureOpen}><DialogContent className="pressure-dialog"><div className="pressure-image"><img src={art.fixer} alt="An auction security fixer at the van doorway"/><span>UNKNOWN NUMBER / INCOMING</span></div><div className="pressure-copy"><span className="eyebrow">SOMEONE FOUND YOUR VAN.</span><DialogTitle>“Kill the feed.<br/>We can see your antenna.”</DialogTitle><DialogDescription>Your picture is still on air. Put the warning on record, or keep the source out of it.</DialogDescription><div className="pressure-choices"><button className="primary" onClick={()=>handlePressure('air')}>AIR THE WARNING <Radio size={17}/></button><button className="secondary" onClick={()=>handlePressure('protect')}>PROTECT THE SOURCE</button></div><small>Your choice changes the episode and the sign-off.</small></div></DialogContent></Dialog>
- <header className="topbar"><span className="brand"><Radio size={20}/> DEAD AIR</span><span className="station-label">{stage==='intro'?'YOUR COAST. YOUR CUT.':station+' / NIGHT 01'}</span><div className="top-actions"><button className="quiet help-toggle" onClick={()=>setHelp(!help)} aria-expanded={help}>How to play</button><label className="sound-label">{sound?<Volume2 size={16}/>:<VolumeX size={16}/>}<span>{musicLoading?'LOADING TRACK':sound?'SOUND ON':'SOUND OFF'}</span><Switch aria-label="Background music" checked={sound} onCheckedChange={toggleSound}/></label></div></header>
- {help&&<aside className="help"><strong>You run the broadcast.</strong><p>Catch a camera moment and freeze it. Make your edit in Unlayer, then go live. Handle the caller and the warning at your van. Your cuts decide what the city sees.</p><button className="quiet" onClick={()=>setHelp(false)}>Got it <X size={16}/></button></aside>}
- {issue&&<div className="notice" role="alert">{issue}<button aria-label="Dismiss message" onClick={()=>setIssue('')}><X size={16}/></button></div>}
- {stage==='intro'&&<section className="arrival"><img className="arrival-art" src={art.opening} alt="Inside an original pirate-TV van overlooking a waterfront auction, the operator offers you the production chair" onError={()=>setAssetError(true)}/><div className="arrival-shade"/><div className="arrival-title"><h1 ref={heading} tabIndex={-1}>DEAD AIR</h1><p>YOUR COAST. YOUR CUT.</p></div><div className="invitation"><span className="eyebrow">MARLIN KEY / 20:46</span><h2>The city’s watching.</h2><p>Give it something worth seeing.</p><button className="primary" onClick={()=>setStage('boot')}>BOOT THE STATION <ArrowUpRight size={20}/></button><small>A five-minute broadcast. Yours to run.</small><button className="quiet soundtrack-invite" onClick={()=>void toggleSound(!sound)}>{sound?<Volume2 size={16}/>:<Play size={16}/>} {musicLoading?'NIGHT FREQUENCY / TUNING IN…':sound?'NIGHT FREQUENCY / PLAYING':'NIGHT FREQUENCY / PLAY SOUNDTRACK'}</button>{assetError&&<p role="alert">The artwork could not load. Please refresh before starting.</p>}</div></section>}
- {stage==='boot'&&<BootSequence onComplete={enterCallsign}/>}
- {stage==='name'&&<section className="name-scene" style={{backgroundImage:`linear-gradient(90deg,rgba(10,17,23,.95),rgba(10,17,23,.45)),url(${art.opening})`}}><div className="name-form"><span className="eyebrow">FIELD DESK READY / IDENTIFY OPERATOR</span><h1 ref={heading} tabIndex={-1}>Your callsign.<br/>Your frequency.</h1><p>The channel is open. Put your name on the signal.</p><label htmlFor="station-name">ENTER CALLSIGN</label><input id="station-name" maxLength={18} value={alias} onChange={e=>setAlias(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!busy)void prepareIdent();}}/><p className="hint">{station} · No account. No actual transmission.</p><button className="primary" disabled={busy||!alias.trim()} onClick={prepareIdent}>{busy?'PREPARING YOUR IDENT…':'CONNECT TO CAMERA 08'} <Pencil size={18}/></button><button className="quiet" onClick={()=>setStage('intro')}><ArrowLeft size={16}/> Back to the van</button></div></section>}
- {stage==='watch'&&<section className={'live-watch '+(watchPaused?'paused':'')}><div className="watch-picture"><img key={source} src={art[source]} alt={source==='dock'?'The mascot makes a break along the dock':'A second angle shows the sculpture changing hands'}/></div><div className="watch-vignette"/><div className="watch-head"><span><i/> {source==='dock'?'DOCK CAMERA':'PARTY PHONE'} / ILLUSTRATED FEED</span><button className="secondary" onClick={()=>setWatchPaused(!watchPaused)} aria-label={watchPaused?'Resume camera cuts':'Pause camera cuts'}>{watchPaused?<Play size={17}/>:<Pause size={17}/>}</button></div><div className="watch-caption" key={'caption-'+source}><span className="eyebrow">{source==='dock'?'20:46 / THE AUCTION JUST WENT SIDEWAYS':'20:41 / FIVE MINUTES EARLIER'}</span><h1 ref={heading} tabIndex={-1}>{source==='dock'?<>A golden fish.<br/>A very bad exit.</>:<>Wait. Who handed<br/>over the fish?</>}</h1><p>{source==='dock'?'You have the picture. What do you make of it?':'Same night. A very different picture.'}</p><button className="primary" onClick={()=>openEditor(art[source],'edit','watch')}>FREEZE & EDIT THIS FRAME <Pencil size={19}/></button><button className="quiet" onClick={()=>openEditor(cut.ident,'ident','watch')}>Customize my station ident <Pencil size={14}/></button><div className="watch-cameras">{(['dock','party'] as Source[]).map((s,i)=><button key={s} className={source===s?'active':''} onClick={()=>{setSource(s);setWatchPaused(true);}}><img src={art[s]} alt=""/><span>0{i+1} / {s==='dock'?'THE GETAWAY':'THE HANDOFF'}</span></button>)}</div></div></section>}
- {isEditor&&<section className="workshop"><div className="workshop-heading"><button className="quiet" onClick={()=>setStage(returnStage)}><ArrowLeft size={16}/> Back</button><div><span className="eyebrow">{stage==='ident'?'01 / STATION IDENT':'02 / BROADCAST PLATE'}</span><h1 ref={heading} tabIndex={-1}>{stage==='ident'?'Give the station a face.':'Make your angle visible.'}</h1></div><a href="https://github.com/unlayer/react-image-editor" target="_blank" rel="noreferrer">UNLAYER IMAGE EDITOR ↗</a></div><p className="editor-brief">{stage==='ident'?'Add your tag, change the mood, make a mark. Your exact saved artwork opens the show.':'Crop the moment. Add a caption or mark the detail. Your exact saved image goes to Preview.'} <b>An untouched frame cannot air. Finish with Save inside the editor.</b></p><div className="editor-host" aria-busy={!editorReady||busy}>{!editorReady&&<div className="editor-loading">Opening the image desk…</div>}{editorImage&&<ImageEditor ref={imageEditorRef} key={editorKey} image={editorImage} options={options} minHeight={570} onLoad={()=>setEditorReady(true)} onSave={onSave} onCancel={()=>setStage(returnStage)} onError={()=>setIssue('The editor could not connect. Reload the image desk to try again.')} onLoadError={()=>setIssue('This image could not load. Return and open the image again.')}/>}</div><div className="editor-foot"><span>Filter · Crop · Draw · Text · Stickers · Frame</span><button className="quiet" onClick={()=>{setEditorReady(false);setEditorKey(k=>k+1);}}>Reload image desk</button></div></section>}
- {stage==='source'&&<section className="source-room"><div className="source-heading"><div><span className="eyebrow">YOUR STATION / CAMERA DESK</span><h1 ref={heading} tabIndex={-1}>One night.<br/>Two cameras.</h1><p>A mascot. A golden fish. An auction gone sideways.<br/>Pick the frame you want the city to see.</p></div><figure className="ident-proof"><img src={cut.ident} alt="Your station ident"/><figcaption><Check size={14}/> STATION IDENT / READY TO AIR</figcaption></figure></div><div className="source-pair">{(['dock','party'] as Source[]).map((s,i)=><button key={s} className="source-choice" onClick={()=>{setSource(s);openEditor(art[s],'edit','source');}}><div className="source-image"><img src={art[s]} alt={s==='dock'?'A pink marlin mascot carries a golden fish along the auction dock':'A stage manager hands the golden fish to the mascot'}/><span className="source-number">0{i+1}</span></div><div className="source-caption"><div><h2>{s==='dock'?'The getaway?':'Before the commotion.'}</h2><p>{s==='dock'?'DOCK CAMERA / THE MOMENT EVERYONE SAW':'PARTY PHONE / THE ANGLE THEY MISSED'}</p></div><span>EDIT FRAME <ArrowUpRight size={18}/></span></div></button>)}</div><div className="source-extras"><button className="secondary" onClick={()=>openEditor(cut.ident,'ident','source')}>STYLE MY STATION IDENT <Pencil size={16}/></button><button className="quiet" onClick={()=>setStage('watch')}>Return to the camera feed <Play size={16}/></button></div></section>}
- {(stage==='desk'||stage==='call')&&<section className="studio"><div className="studio-caption"><span className="eyebrow">MARLIN KEY AUCTION / CONTROL ROOM</span><span>{live?'ON AIR':'STANDING BY'} · {String(Math.floor(elapsed/60)).padStart(2,'0')}:{String(elapsed%60).padStart(2,'0')}</span></div><div className="console-grid"><aside className="preview-monitor">{stage==='call'?<div className="caller"><span className="caller-heading"><Phone/> CALLER 01</span><div className="waveform" aria-hidden="true">▂ ▄ ▆ ▃ ▅ ▇ ▄ ▂ ▅ ▃</div><h1 ref={heading} tabIndex={-1}>{cut.source==='dock'?<>“That’s our performer.<br/>The fish is a prop.”</>:<>“That isn’t a prop.<br/>Our trophy is missing.”</>}</h1><p>{cut.source==='dock'?'Stage manager. One very different account.':'Auction organizer. One very different account.'}</p><button className="primary" onClick={()=>decide('call')}><Phone size={18}/> TAKE CALL</button><button className="secondary" onClick={()=>decide('hold')}>HOLD THE SHOT</button><button className="quiet" onClick={()=>decide('switch')}>Switch to the other angle <ArrowUpRight size={16}/></button></div>:<><div className="monitor-label">PREVIEW <span>NOT ON AIR</span></div><img className="preview-image" src={cut.preview||cut.ident} alt="Your saved image queued in Preview"/><div className="cut-style" role="group" aria-label="Broadcast transition"><button aria-pressed={cutStyle==='hard'} onClick={()=>setCutStyle('hard')}>HARD CUT</button><button aria-pressed={cutStyle==='dissolve'} onClick={()=>setCutStyle('dissolve')}>DISSOLVE</button></div><div className="preview-actions"><button className="primary" disabled={!cut.preview||cut.preview===cut.onAir} onClick={takeLive}><Radio size={18}/> TAKE LIVE</button><button className="secondary" onClick={()=>openEditor(cut.preview||art[source],'edit','desk')}><Pencil size={16}/> EDIT FRAME</button></div><p className="monitor-note">{!live?'Your image is ready. Take it live to start the show.':cut.decision==='call'?'The caller is on record. Keep your eyes on the incoming line.':cut.decision==='hold'?'You held your frame. Someone at the auction noticed.':cut.decision==='switch'?'The second angle is on air. The night is not over.':elapsed<5?'Your picture is out there. Stay on the line.':'An incoming call needs your attention.'}</p></>}</aside><div className="onair-monitor"><div className="monitor-label"><span className={live?'live-dot':''}/>{live?'ON AIR':'STATION IDENT'}<span>{station}</span></div><div className="program-image"><img key={cut.onAir} src={cut.onAir||cut.ident} alt="The exact image currently on air"/><span className="station-bug">{station}</span></div><div className="onair-foot">{stage==='call'?'YOUR FRAME IS STILL ON AIR':cut.corrected?'REVISED PLATE / ON AIR':'YOUR COAST. YOUR CUT.'}<span>CH 08</span></div></div><div className="camera-strip">{(['dock','party'] as Source[]).map((s,i)=><button key={s} className={'camera '+(source===s?'selected':'')} onClick={()=>{setSource(s);if(stage==='call')dispatch({type:'decide',decision:'revise'});openEditor(art[s],'edit','desk');}}><img src={art[s]} alt={s==='dock'?'Dock camera angle':'Party phone angle'}/><span>0{i+1} / {s==='dock'?'DOCK CAMERA':stage==='call'?'NEW ANGLE':'PARTY PHONE'} <Pencil size={14}/></span></button>)}</div></div><div className="direction-strip"><p>{stage==='call'?'A second angle. Your call.':cut.pressure!=='pending'?'Your van is made. Get the picture out.':cut.decision!=='pending'?'An unknown number has your attention.':live?'The night has another angle.':'Your next click puts this picture on air.'}</p>{stage==='call'?<button className="secondary" onClick={()=>{dispatch({type:'decide',decision:'revise'});openEditor(cut.onAir,'edit','desk');}}>REVISE FRAME <Pencil size={16}/></button>:cut.decision!=='pending'?<button className="primary" disabled={busy} onClick={finish}>{busy?'CUTTING THE LAST SHOT…':cut.pressure==='pending'?'READ INCOMING MESSAGE':'CUT & GET OUT'} <ArrowUpRight size={18}/></button>:live?<button className="quiet" onClick={()=>setStage('call')}>Answer incoming line <Phone size={16}/></button>:null}</div></section>}
- {(stage==='ending'||stage==='replay')&&<section className="episode"><div className="episode-heading"><div><span className="eyebrow">{station} / EPISODE 01</span><h1 ref={heading} tabIndex={-1}>{stage==='ending'?'That’s your broadcast.':'Your night, on record.'}</h1><p>{ending(cut)}</p></div><span className="episode-stamp">OFF AIR<br/><small>{cut.shots.length} CUTS / ONE NIGHT</small></span></div><div className="episode-screen"><img key={stage==='replay'?replayIndex:'closing'} src={stage==='replay'?replayShot.image:cut.shots.at(-1)?.image||cut.onAir} alt={stage==='replay'?replayShot.caption:'Your final on-air image'}/><span className="station-bug">{station}</span><div className="episode-subtitle">{stage==='replay'?replayShot.caption:'No perfect story. Just the cut you chose.'}</div></div>{stage==='replay'&&<div className="replay-controls"><button className="secondary" aria-label={playing?'Pause replay':'Play replay'} onClick={()=>{if(replayIndex===cut.shots.length-1)setReplayIndex(0);setPlaying(!playing);}}>{playing?<Pause size={18}/>:<Play size={18}/>}</button><Slider min={0} max={Math.max(1,cut.shots.length-1)} value={[replayIndex]} step={1} onValueChange={v=>{setPlaying(false);setReplayIndex(v[0]);}} aria-label="Episode cut"/><span>CUT {replayIndex+1} / {cut.shots.length}</span></div>}<div className="episode-actions"><button className="primary" onClick={()=>{setReplayIndex(0);setPlaying(true);setStage('replay');}}><Play size={18}/> REPLAY MY CUT</button><button className="secondary" onClick={saveStill}><Download size={18}/> KEEP FRAME</button><button className="secondary episode-card-action" disabled={busy} onClick={saveCard}><Download size={18}/>{busy?'DEVELOPING…':'KEEP EPISODE CARD'}</button><button className="quiet" onClick={retry}><RotateCcw size={16}/> Recut from interruption</button></div><p className="episode-note">Your saved artwork, callsign, choices, and closing frame become one downloadable episode card. Session stays in this tab; refresh starts a new night.</p></section>}
- <footer className="footer"><span>DEAD AIR / INDEPENDENT COASTAL TELEVISION</span><span>Music: <a href="https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100383" target="_blank" rel="noreferrer">“Chase Pulse” · Kevin MacLeod</a> / <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a></span></footer>
- </main>;
+import { type SyntheticEvent, useCallback, useEffect, useReducer, useRef, useState } from "react";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Radio,
+  Phone,
+  Pause,
+  Play,
+  Pencil,
+  Download,
+  RotateCcw,
+  Check,
+  Volume2,
+  VolumeX,
+  X,
+} from "lucide-react";
+import ImageEditor, {
+  type ImageEditorInstance,
+  type ImageEditorRef,
+  type ImageEditorSaveResult,
+} from "@unlayer/react-image-editor";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Slider } from "@/components/ui/slider";
+import { cutReducer, emptyCut, ending, type Source } from "@/lib/broadcast";
+import { judgeEditorSave } from "@/lib/editor-gate";
+import { StationAudio } from "@/lib/audio";
+import { BootSequence } from "@/components/dead-air/boot-sequence";
+type Stage =
+  | "intro"
+  | "boot"
+  | "name"
+  | "watch"
+  | "ident"
+  | "source"
+  | "edit"
+  | "desk"
+  | "call"
+  | "ending"
+  | "replay";
+/**
+ * Canonical artwork. These are the untouched 1672 x 941 same-origin PNGs and the
+ * ONLY thing that may ever reach Unlayer React Image Editor: `openEditor` and
+ * every value that can land in `Cut.onAir` (which `openEditor` can re-open) must
+ * read from here, never from `display`.
+ */
+const art = {
+  opening: "/art/opening.png",
+  dock: "/art/dock.png",
+  party: "/art/party-v2.png",
+  fixer: "/art/fixer.png",
+  getaway: "/art/getaway.png",
+};
+
+/**
+ * Display-only WebP derivatives (see docs/art-provenance.md). Used for on-screen
+ * surfaces and for the same-origin canvas composites, which never hand their
+ * source image to the editor. Never pass any of these to `openEditor`.
+ */
+const display = {
+  openingSmall: "/art/display/opening-768.webp",
+  opening: "/art/display/opening-1440.webp",
+  fixer: "/art/display/fixer-768.webp",
+  getaway: "/art/display/getaway-1440.webp",
+  feed: {
+    dock: "/art/display/dock-1440.webp",
+    party: "/art/display/party-v2-1440.webp",
+  },
+  thumb: {
+    dock: "/art/display/dock-320.webp",
+    party: "/art/display/party-v2-320.webp",
+  },
+};
+// One stable configuration, defined at module scope. Changing `features`
+// remounts the editor and discards the visitor's work, so this object is
+// never rebuilt per render. `translations` is one of the few keys the wrapper
+// applies through its lightweight update path, so renaming the rail is safe.
+//
+// The tools are relabelled in the station's own language: the image desk is
+// part of the broadcast set, not a third-party widget parked inside it. The
+// Save control keeps its name so the on-screen instructions, the README and
+// Unlayer's own documentation all agree on what to press.
+const options = {
+  theme: "dark" as const,
+  aiAssistantOpenState: "closed" as const,
+  translations: {
+    en: {
+      "image_editor.tools.filter": "GRADE",
+      "image_editor.tools.crop": "REFRAME",
+      "image_editor.tools.draw": "MARK UP",
+      "image_editor.tools.text": "LOWER THIRD",
+      "image_editor.tools.shapes": "BLOCK OUT",
+      "image_editor.tools.stickers": "BUGS",
+      "image_editor.tools.frame": "BORDER",
+    },
+  },
+  features: {
+    imageEditor: {
+      dock: "left" as const,
+      tools: {
+        filter: true,
+        crop: true,
+        draw: true,
+        text: true,
+        stickers: true,
+        frame: true,
+        resize: false,
+      },
+    },
+  },
+};
+/**
+ * Visible recovery state for any image that fails to load. Inline SVG, so it
+ * needs no second network round trip: a dead feed shows a signal-lost card in
+ * the right aspect ratio instead of a broken-image icon.
+ */
+const signalLost =
+  "data:image/svg+xml;charset=utf-8," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1672 941" width="1672" height="941">` +
+      `<rect width="1672" height="941" fill="#101a20"/>` +
+      `<g fill="none" stroke="#243139" stroke-width="3">` +
+      Array.from({ length: 14 }, (_, i) => `<path d="M0 ${i * 72 + 36}H1672"/>`).join("") +
+      `</g>` +
+      `<rect x="596" y="404" width="480" height="134" fill="#e86151"/>` +
+      `<text x="836" y="472" fill="#12191d" font-family="Impact,Arial Black,sans-serif" font-size="58" font-weight="900" text-anchor="middle">SIGNAL LOST</text>` +
+      `<text x="836" y="514" fill="#2b1b16" font-family="ui-monospace,monospace" font-size="21" text-anchor="middle" letter-spacing="3">THIS FEED DID NOT ARRIVE</text>` +
+      `</svg>`,
+  );
+
+/** File-name-safe form of the callsign, so "SALT & STATIC TV" cannot leak
+ * punctuation into a download name. */
+const slug = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "station";
+
+function download(blob: Blob, name: string) {
+  const u = URL.createObjectURL(blob),
+    a = document.createElement("a");
+  a.href = u;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(u), 2000);
+}
+export default function Home() {
+  const [stage, setStage] = useState<Stage>("intro");
+  const [alias, setAlias] = useState("");
+  const [cut, dispatch] = useReducer(cutReducer, emptyCut);
+  const [source, setSource] = useState<Source>("dock");
+  const [editorImage, setEditorImage] = useState("");
+  const [returnStage, setReturnStage] = useState<Stage>("source");
+  const [editorReady, setEditorReady] = useState(false);
+  const [editorKey, setEditorKey] = useState(0);
+  const [issue, setIssue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sound, setSound] = useState(false);
+  const [musicLoading, setMusicLoading] = useState(false);
+  const [help, setHelp] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [live, setLive] = useState(false);
+  const [replayIndex, setReplayIndex] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [assetError, setAssetError] = useState(false);
+  const audio = useRef<StationAudio | null>(null);
+  const soundRequest = useRef(0);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const [watchPaused, setWatchPaused] = useState(false);
+  const [pressureOpen, setPressureOpen] = useState(false);
+  const [transmission, setTransmission] = useState(false);
+  const [toast, setToast] = useState("");
+  const [confirmReload, setConfirmReload] = useState(false);
+  /**
+   * The visitor asked to switch to the other camera. They cut that angle in the
+   * editor first; the switch is only recorded once their own frame goes live,
+   * so the on-air monitor never falls back to raw camera art.
+   */
+  const [switchPending, setSwitchPending] = useState(false);
+  /** Which night this is. A second run through is NIGHT 02, not NIGHT 01 again. */
+  const [night, setNight] = useState(1);
+  const [cutStyle, setCutStyle] = useState<"hard" | "dissolve">("hard");
+  const [reduced, setReduced] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  const soundWanted = useRef(false);
+  const imageEditorRef = useRef<ImageEditorRef>(null);
+  /*
+   * Editor-gate signals. See lib/editor-gate.ts: `hasChanges()` reports
+   * *unsaved* changes, so it is tracked while the visitor works instead of
+   * being read once after the save, and the starting image is snapshotted in
+   * onLoad so a save can be compared against it.
+   */
+  const editorBaseline = useRef<string | null>(null);
+  const sawEditorChanges = useRef(false);
+  const changeTrackingAvailable = useRef(false);
+  const readEditorImage = useCallback(() => {
+    const editor = imageEditorRef.current?.editor;
+    if (!editor || typeof editor.getImage !== "function") return null;
+    try {
+      return editor.getImage();
+    } catch {
+      return null;
+    }
+  }, []);
+  const editorHost = useRef<HTMLDivElement>(null);
+  /**
+   * Visible recovery for any image that fails to load: the element is swapped
+   * for the signal-lost card (in the same box, so nothing reflows) and the
+   * visitor is told which feed died instead of being shown a broken icon.
+   */
+  const markSignalLost = useCallback((el: HTMLImageElement, what: string) => {
+    if (el.dataset.signalLost) return;
+    el.dataset.signalLost = "true";
+    el.removeAttribute("srcset");
+    el.src = signalLost;
+    if (el.classList.contains("arrival-art")) setAssetError(true);
+    setIssue(what + " could not load. Everything else still works.");
+  }, []);
+  const resetEditorGate = useCallback(() => {
+    editorBaseline.current = null;
+    sawEditorChanges.current = false;
+    changeTrackingAvailable.current = false;
+  }, []);
+  const enterCallsign = useCallback(() => setStage("name"), []);
+  const station = (alias.trim() || "AFTER HOURS").toUpperCase() + " TV";
+  const isEditor = stage === "ident" || stage === "edit";
+  const nightLabel = String(night).padStart(2, "0");
+  /*
+   * Replay bounds. `retry()` can shorten the recorded episode, so the index is
+   * clamped on read as well as reset on retry: nothing here may ever
+   * dereference an out-of-range shot.
+   */
+  const replayLast = Math.max(0, cut.shots.length - 1);
+  const replayAt = Math.min(replayIndex, replayLast);
+  const replayShot = cut.shots[replayAt];
+  useEffect(() => {
+    const m = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const change = () => setReduced(m.matches);
+    m.addEventListener("change", change);
+    audio.current = new StationAudio(() => {
+      soundWanted.current = false;
+      setSound(false);
+      setMusicLoading(false);
+    });
+    return () => {
+      m.removeEventListener("change", change);
+      audio.current?.close();
+    };
+  }, []);
+  useEffect(() => {
+    audio.current?.setScene(pressureOpen ? "pressure" : stage);
+    if (!pressureOpen) heading.current?.focus();
+  }, [stage, pressureOpen]);
+  // The ON AIR timecode runs for as long as the station is on air, through the
+  // caller and the warning. A broadcast clock frozen at 00:05 reads as broken.
+  useEffect(() => {
+    if (!live || (stage !== "desk" && stage !== "call")) return;
+    const t = setInterval(() => setElapsed((current) => current + 1), 1000);
+    return () => clearInterval(t);
+  }, [live, stage]);
+  // The incoming line arrives on its own after five seconds on air — but never
+  // on top of a cut the visitor has saved and not yet aired.
+  useEffect(() => {
+    if (!live || stage !== "desk" || cut.decision !== "pending") return;
+    if (cut.preview && cut.preview !== cut.onAir) return;
+    const t = setTimeout(() => setStage("call"), Math.max(0, (5 - elapsed) * 1000));
+    return () => clearTimeout(t);
+  }, [live, stage, elapsed, cut.decision, cut.preview, cut.onAir]);
+  useEffect(() => {
+    if (!playing || stage !== "replay") return;
+    // One timer per shot, so the last shot still holds for its full beat and no
+    // state is written from inside an updater.
+    if (replayIndex >= cut.shots.length - 1) {
+      const end = setTimeout(() => setPlaying(false), 4200);
+      return () => clearTimeout(end);
+    }
+    const t = setTimeout(() => setReplayIndex((i) => i + 1), 4200);
+    return () => clearTimeout(t);
+  }, [playing, stage, replayIndex, cut.shots.length]);
+  // Track the editor's dirty flag while the visitor is working, and keep the
+  // last-known-true value. Reading it only after a save races the runtime's own
+  // post-save reset; see lib/editor-gate.ts.
+  useEffect(() => {
+    if (!isEditor || !editorReady) return;
+    const read = () => {
+      const editor = imageEditorRef.current?.editor;
+      if (!editor || typeof editor.hasChanges !== "function") return;
+      let dirty: boolean | null = null;
+      try {
+        dirty = editor.hasChanges();
+        // Only a read that actually returned counts as trackable, so a runtime
+        // that throws here stays "unverifiable" and the gate falls open.
+        changeTrackingAvailable.current = true;
+      } catch {
+        /* The gate falls back to the image snapshots, then to allowing it. */
+      }
+      if (dirty) sawEditorChanges.current = true;
+      // onLoad can fire before the image is in the canvas, where getImage()
+      // still answers with the source URL or nothing. Take the baseline from
+      // the first read that both reports clean and returns a real bitmap.
+      if (dirty === false && editorBaseline.current === null) {
+        const image = readEditorImage();
+        if (image && image.startsWith("data:image/") && image.length > 512)
+          editorBaseline.current = image;
+      }
+    };
+    read();
+    const t = setInterval(read, 350);
+    /*
+     * Also read on every interaction inside the editor, captured before the
+     * editor's own handlers run. A press on the editor's Save button is itself
+     * an interaction, so the flag is sampled while it is still pre-save —
+     * closing the window where an edit made between two polls could be missed.
+     */
+    const host = editorHost.current;
+    const events = ["pointerdown", "pointerup", "keyup"] as const;
+    for (const name of events) host?.addEventListener(name, read, true);
+    return () => {
+      clearInterval(t);
+      for (const name of events) host?.removeEventListener(name, read, true);
+    };
+  }, [isEditor, editorReady, editorKey, readEditorImage]);
+  useEffect(() => {
+    if (stage !== "watch" || watchPaused || reduced) return;
+    const timer = setInterval(() => setSource((s) => (s === "dock" ? "party" : "dock")), 6500);
+    return () => clearInterval(timer);
+  }, [stage, watchPaused, reduced]);
+  useEffect(() => {
+    if (stage !== "desk" || cut.decision === "pending" || cut.pressure !== "pending") return;
+    // Deliberately independent of `sound`: toggling the music switch must not
+    // restart the interruption timer.
+    const timer = setTimeout(() => setPressureOpen(true), 4500);
+    return () => clearTimeout(timer);
+  }, [stage, cut.decision, cut.pressure]);
+  /*
+   * An image in the server-rendered HTML can fail before React hydrates and
+   * attaches its onError, so the error event is simply never delivered. Sweep
+   * for already-broken images once mounted, and again on each stage.
+   */
+  useEffect(() => {
+    const sweep = () => {
+      for (const el of document.querySelectorAll("img")) {
+        if (el.complete && el.src && !el.naturalWidth && !el.dataset.signalLost)
+          markSignalLost(
+            el,
+            el.classList.contains("arrival-art") ? "The opening artwork" : "An image",
+          );
+      }
+    };
+    const soon = setTimeout(sweep, 0);
+    const later = setTimeout(sweep, 1500);
+    return () => {
+      clearTimeout(soon);
+      clearTimeout(later);
+    };
+  }, [stage, markSignalLost]);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(""), 3200);
+    return () => clearTimeout(t);
+  }, [toast]);
+  useEffect(() => {
+    if (!transmission) return;
+    const t = setTimeout(() => setTransmission(false), 650);
+    return () => clearTimeout(t);
+  }, [transmission]);
+  const toggleSound = async (next: boolean) => {
+    const request = ++soundRequest.current;
+    soundWanted.current = next;
+    setSound(next);
+    setMusicLoading(next);
+    if (!next) {
+      audio.current?.stop();
+      return;
+    }
+    try {
+      await audio.current?.start();
+      if (request !== soundRequest.current && !soundWanted.current) audio.current?.stop();
+      if (request === soundRequest.current) setMusicLoading(false);
+    } catch {
+      if (request !== soundRequest.current) return;
+      setSound(false);
+      setMusicLoading(false);
+      setIssue("Music could not load. You can keep broadcasting and try again.");
+    }
+  };
+  const openEditor = useCallback(
+    (image: string, kind: "ident" | "edit", back: Stage) => {
+      setEditorImage(image);
+      setEditorReady(false);
+      setEditorKey((k) => k + 1);
+      setReturnStage(back);
+      setConfirmReload(false);
+      resetEditorGate();
+      setStage(kind);
+    },
+    [resetEditorGate],
+  );
+  const leaveEditor = useCallback(() => {
+    setConfirmReload(false);
+    setSwitchPending(false);
+    setStage(returnStage);
+  }, [returnStage]);
+  const prepareIdent = async () => {
+    setBusy(true);
+    setIssue("");
+    try {
+      // Display derivative: this frame is composited to a canvas and exported as
+      // a data URL, so it never becomes an editable source. 1440 px wide feeds a
+      // 1280 x 720 canvas without upscaling.
+      const im = new window.Image();
+      im.src = display.feed.party;
+      await im.decode();
+      const c = document.createElement("canvas");
+      c.width = 1280;
+      c.height = 720;
+      const g = c.getContext("2d")!;
+      g.drawImage(im, 0, 0, 1280, 720);
+      g.fillStyle = "rgba(12,19,24,.50)";
+      g.fillRect(0, 0, 1280, 720);
+      g.fillStyle = "#f4eddb";
+      g.fillRect(64, 430, 1152, 220);
+      g.fillStyle = "#151c21";
+      g.font = "900 92px Impact, sans-serif";
+      g.fillText(station, 92, 544, 1096);
+      g.font = "26px monospace";
+      g.fillText("YOUR COAST. YOUR CUT.", 96, 603);
+      dispatch({ type: "ident", image: c.toDataURL("image/png") });
+      setSource("dock");
+      setStage("watch");
+    } catch {
+      setIssue("The station artwork could not load. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const onEditorLoad = useCallback((editor: ImageEditorInstance) => {
+    setEditorReady(true);
+    // Snapshot of the untouched starting image, for the save gate. Only a real
+    // bitmap counts here; the poll effect retries if this fires too early.
+    const starting = (() => {
+      if (!editor || typeof editor.getImage !== "function") return null;
+      try {
+        return editor.getImage();
+      } catch {
+        return null;
+      }
+    })();
+    editorBaseline.current =
+      starting && starting.startsWith("data:image/") && starting.length > 512 ? starting : null;
+    if (editor && typeof editor.hasChanges === "function") {
+      try {
+        const dirty = editor.hasChanges();
+        changeTrackingAvailable.current = true;
+        if (dirty) sawEditorChanges.current = true;
+      } catch {
+        /* ignore: the poll effect re-reads it, and the gate fails open. */
+      }
+    }
+  }, []);
+  const onSave = async ({ dataUrl, blob }: ImageEditorSaveResult) => {
+    setBusy(true);
+    setIssue("");
+    try {
+      const verdict = judgeEditorSave({
+        saved: dataUrl,
+        baseline: editorBaseline.current,
+        current: readEditorImage(),
+        sawChanges: sawEditorChanges.current,
+        changeTrackingAvailable: changeTrackingAvailable.current,
+      });
+      if (!verdict.edited)
+        throw Error(
+          stage === "ident"
+            ? "Make the ident yours before saving. Grade it, reframe it, mark it up, or drop a lower third on it."
+            : "The city needs your cut, not the untouched camera feed. Make one visible edit before saving.",
+        );
+      if (!blob || !dataUrl.startsWith("data:image/"))
+        throw Error("The image was not saved. Please try again.");
+      const im = new window.Image();
+      im.src = dataUrl;
+      await im.decode();
+      if (!im.naturalWidth) throw Error("The saved image is empty.");
+      setConfirmReload(false);
+      if (stage === "ident") {
+        dispatch({ type: "ident", image: dataUrl });
+        // Save and Back lead to the same place, whichever screen sent you here.
+        setStage(returnStage === "watch" ? "watch" : "source");
+        setToast("Your ident is ready to hit the city.");
+      } else {
+        dispatch({ type: "save", image: dataUrl, source });
+        setStage("desk");
+        setToast(
+          switchPending
+            ? "Your cut of the other angle is ready. Take it live to switch."
+            : returnStage === "call"
+              ? "New angle saved. Take it live — the caller is still holding."
+              : "Your cut is ready. Put it on air.",
+        );
+      }
+    } catch (e) {
+      setIssue(e instanceof Error ? e.message : "Save failed. Your current broadcast is safe.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const takeLive = () => {
+    setTransmission(true);
+    dispatch({ type: "live" });
+    // `decide` is one-shot, so only claim the switch while it can still be
+    // recorded — answering the caller in between cancels the pending switch.
+    if (switchPending && cut.decision === "pending") {
+      // The switch is recorded now, against the visitor's own edit of the new
+      // angle — the raw camera PNG never reaches the on-air monitor.
+      dispatch({ type: "decide", decision: "switch" });
+      setToast("SIGNAL OUT / Camera switched to your cut of the other angle.");
+    } else {
+      setToast("SIGNAL OUT / Your picture is on air.");
+    }
+    setSwitchPending(false);
+    setLive(true);
+    if (!live) setElapsed(0);
+    setStage("desk");
+  };
+  const decide = (decision: "call" | "hold") => {
+    dispatch({ type: "decide", decision });
+    setSwitchPending(false);
+    setStage("desk");
+    setToast(
+      decision === "call"
+        ? "Caller patched through. Someone else is listening."
+        : "You held your picture. The line stays open.",
+    );
+  };
+  const startSwitch = () => {
+    const other: Source = cut.source === "dock" ? "party" : "dock";
+    setSwitchPending(true);
+    setSource(other);
+    openEditor(art[other], "edit", "call");
+    setToast("The other camera is loaded. Cut it before it can go on air.");
+  };
+  const finish = async () => {
+    if (cut.pressure === "pending") {
+      setPressureOpen(true);
+      return;
+    }
+    setBusy(true);
+    try {
+      /*
+       * A frame the visitor saved but never aired would otherwise be dropped
+       * from the sign-off and the episode card. It airs with the sign-off
+       * instead, and the toast below says so.
+       */
+      const unaired = cut.preview && cut.preview !== cut.onAir ? cut.preview : "";
+      if (unaired) dispatch({ type: "live" });
+      const background = new window.Image(),
+        plate = new window.Image();
+      // Display derivative: composited to canvas and exported, never editable.
+      background.src = display.getaway;
+      plate.src = unaired || cut.shots.filter((s) => s.kind === "plate").at(-1)?.image || cut.onAir;
+      await Promise.all([background.decode(), plate.decode()]);
+      const c = document.createElement("canvas");
+      c.width = 1280;
+      c.height = 720;
+      const g = c.getContext("2d")!;
+      g.drawImage(background, 0, 0, 1280, 720);
+      g.fillStyle = "rgba(8,15,20,.72)";
+      g.fillRect(0, 520, 1280, 200);
+      g.fillStyle = "#f4ecdc";
+      g.font = "bold 48px Impact,sans-serif";
+      g.fillText(station, 42, 585, 600);
+      g.font = "22px monospace";
+      g.fillText(cut.pressure === "air" ? "THE CITY HEARD YOU." : "THE PICTURE GOT OUT.", 42, 632);
+      g.fillStyle = "#f4ecdc";
+      g.fillRect(890, 490, 340, 196);
+      g.drawImage(plate, 898, 498, 324, 180);
+      dispatch({ type: "close", image: c.toDataURL("image/png") });
+      setStage("ending");
+      setLive(false);
+      setReplayIndex(0);
+      if (unaired) setToast("Your newest cut aired with the sign-off. It is in the episode card.");
+    } catch {
+      setIssue("The closing shot could not load. Your broadcast is safe; try sign-off again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const handlePressure = (choice: "air" | "protect") => {
+    dispatch({ type: "pressure", choice, image: art.fixer });
+    setPressureOpen(false);
+    setToast(
+      choice === "air"
+        ? "Warning recorded. Time to leave the marina."
+        : "Source protected. Get the picture out.",
+    );
+  };
+  const saveStill = async () => {
+    try {
+      const im = (stage === "replay" ? replayShot?.image : cut.shots.at(-1)?.image) || cut.onAir;
+      const b = await (await fetch(im)).blob();
+      download(b, "dead-air-" + slug(station) + ".png");
+    } catch {
+      setIssue("This frame could not download. Please try again.");
+    }
+  };
+  const saveCard = async () => {
+    setBusy(true);
+    try {
+      const { makeEpisodeCard } = await import("@/lib/episode-card");
+      const card = await makeEpisodeCard(station, cut);
+      download(card, "dead-air-" + slug(station) + "-episode-card.png");
+      setToast("Episode card developed. Your exact cut is inside it.");
+    } catch {
+      setIssue("The episode card could not export. Your replay is still available.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const retry = () => {
+    setElapsed(0);
+    setLive(true);
+    setPlaying(false);
+    // rewind() shortens the recorded episode, so the replay head goes back to
+    // the top rather than pointing past the end of it.
+    setReplayIndex(0);
+    setPressureOpen(false);
+    setSwitchPending(false);
+    dispatch({ type: "rewind" });
+    setStage("call");
+    setToast("Back at the interruption. Your latest cut is still on air.");
+  };
+  /**
+   * A second night, without re-running boot, callsign and the ident edit. The
+   * station ident the visitor authored is carried over — `ident` resets every
+   * other field of the cut — so the branches (2 warnings x 3 caller choices x
+   * 2 angles) are explorable without a browser reload.
+   */
+  const runAnotherNight = () => {
+    setPlaying(false);
+    setReplayIndex(0);
+    setLive(false);
+    setElapsed(0);
+    setIssue("");
+    setPressureOpen(false);
+    setSwitchPending(false);
+    setWatchPaused(false);
+    setCutStyle("hard");
+    setSource("dock");
+    dispatch({ type: "ident", image: cut.ident });
+    setNight((n) => n + 1);
+    setStage("watch");
+    setToast("A new night. Same station, fresh cut. The cameras are rolling.");
+  };
+  const feedError = useCallback(
+    (what: string) => (event: SyntheticEvent<HTMLImageElement>) =>
+      markSignalLost(event.currentTarget, what),
+    [markSignalLost],
+  );
+  return (
+    <main
+      className={"app stage-" + stage + " cut-" + cutStyle + (transmission ? " transmitting" : "")}
+    >
+      {transmission && (
+        <div className="transmission-wipe" aria-hidden="true">
+          <Radio /> SIGNAL OUT
+        </div>
+      )}
+      {toast && (
+        <div className="broadcast-toast" role="status">
+          <Radio size={18} />
+          {toast}
+        </div>
+      )}
+      {/*
+       * While the warning is unanswered this dialog is the only way forward, so
+       * it cannot be dismissed: Esc, the overlay and the close X are all
+       * withheld until a choice is made. (Dismissing it used to strand the
+       * visitor — the reopen effect's deps never changed on dismissal.)
+       */}
+      <Dialog
+        open={pressureOpen}
+        onOpenChange={(open) => {
+          if (open || cut.pressure !== "pending") setPressureOpen(open);
+        }}
+      >
+        <DialogContent
+          className="pressure-dialog"
+          showCloseButton={cut.pressure !== "pending"}
+          onEscapeKeyDown={(event) => {
+            if (cut.pressure === "pending") event.preventDefault();
+          }}
+          onPointerDownOutside={(event) => {
+            if (cut.pressure === "pending") event.preventDefault();
+          }}
+          onInteractOutside={(event) => {
+            if (cut.pressure === "pending") event.preventDefault();
+          }}
+        >
+          <div className="pressure-image">
+            {/* eslint-disable-next-line @next/next/no-img-element -- pre-sized WebP derivative; see file header. */}
+            <img
+              src={display.fixer}
+              width={768}
+              height={433}
+              loading="lazy"
+              decoding="async"
+              alt="An auction security fixer at the van doorway"
+              onError={feedError("The message photo")}
+            />
+            <span>UNKNOWN NUMBER / INCOMING</span>
+          </div>
+          <div className="pressure-copy">
+            <span className="eyebrow">SOMEONE FOUND YOUR VAN.</span>
+            <DialogTitle>
+              “Kill the feed.
+              <br />
+              We can see your antenna.”
+            </DialogTitle>
+            <DialogDescription>
+              Your picture is still on air. Put the warning on record, or keep the source out of it.
+            </DialogDescription>
+            <div className="pressure-choices">
+              <button className="primary" onClick={() => handlePressure("air")}>
+                AIR THE WARNING <Radio size={17} />
+              </button>
+              <button className="secondary" onClick={() => handlePressure("protect")}>
+                PROTECT THE SOURCE
+              </button>
+            </div>
+            <small>Your choice changes the episode and the sign-off.</small>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <header className="topbar">
+        <span className="brand">
+          <Radio size={20} /> DEAD AIR
+        </span>
+        <span className="station-label">
+          {stage === "intro" ? "YOUR COAST. YOUR CUT." : station + " / NIGHT " + nightLabel}
+        </span>
+        <div className="top-actions">
+          <button className="quiet help-toggle" onClick={() => setHelp(!help)} aria-expanded={help}>
+            How to play
+          </button>
+          <label className="sound-label">
+            {sound ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            <span>{musicLoading ? "LOADING TRACK" : sound ? "SOUND ON" : "SOUND OFF"}</span>
+            <Switch aria-label="Background music" checked={sound} onCheckedChange={toggleSound} />
+          </label>
+        </div>
+      </header>
+      {help && (
+        <aside className="help">
+          <strong>You run the broadcast.</strong>
+          <p>
+            Catch a camera moment and freeze it. Make your edit in Unlayer, then go live. Handle the
+            caller and the warning at your van. Your cuts decide what the city sees.
+          </p>
+          <button className="quiet" onClick={() => setHelp(false)}>
+            Got it <X size={16} />
+          </button>
+        </aside>
+      )}
+      {issue && (
+        <div className="notice" role="alert">
+          {issue}
+          <button aria-label="Dismiss message" onClick={() => setIssue("")}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
+      {stage === "intro" && (
+        <section className="arrival">
+          {/* eslint-disable-next-line @next/next/no-img-element -- pre-sized WebP derivative; see file header. */}
+          <img
+            className="arrival-art"
+            src={display.opening}
+            srcSet={`${display.openingSmall} 768w, ${display.opening} 1440w`}
+            sizes="100vw"
+            width={1440}
+            height={811}
+            fetchPriority="high"
+            decoding="async"
+            alt="Inside an original pirate-TV van overlooking a waterfront auction, the operator offers you the production chair"
+            onError={(event) => {
+              setAssetError(true);
+              feedError("The opening artwork")(event);
+            }}
+          />
+          <div className="arrival-shade" />
+          <div className="arrival-title">
+            <h1 ref={heading} tabIndex={-1}>
+              DEAD AIR
+            </h1>
+            <p>YOUR COAST. YOUR CUT.</p>
+          </div>
+          <div className="invitation">
+            <span className="eyebrow">MARLIN KEY / 20:46</span>
+            <h2>The city’s watching.</h2>
+            <p>Give it something worth seeing.</p>
+            <button className="primary" onClick={() => setStage("boot")}>
+              BOOT THE STATION <ArrowUpRight size={20} />
+            </button>
+            <small>A five-minute broadcast. Yours to run.</small>
+            <button className="quiet soundtrack-invite" onClick={() => void toggleSound(!sound)}>
+              {sound ? <Volume2 size={16} /> : <Play size={16} />}{" "}
+              {musicLoading
+                ? "NIGHT FREQUENCY / TUNING IN…"
+                : sound
+                  ? "NIGHT FREQUENCY / PLAYING"
+                  : "NIGHT FREQUENCY / PLAY SOUNDTRACK"}
+            </button>
+            {assetError && (
+              <p role="alert">
+                The opening artwork did not arrive, so you are seeing a signal-lost card. You can
+                still boot the station.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
+      {stage === "boot" && <BootSequence onComplete={enterCallsign} />}
+      {stage === "name" && (
+        <section
+          className="name-scene"
+          style={{
+            backgroundImage: `linear-gradient(90deg,rgba(10,17,23,.95),rgba(10,17,23,.45)),url(${display.opening})`,
+          }}
+        >
+          <div className="name-form">
+            <span className="eyebrow">FIELD DESK READY / IDENTIFY OPERATOR</span>
+            <h1 ref={heading} tabIndex={-1}>
+              Your callsign.
+              <br />
+              Your frequency.
+            </h1>
+            <p>The channel is open. Put your name on the signal.</p>
+            <label htmlFor="station-name">ENTER CALLSIGN</label>
+            <input
+              id="station-name"
+              maxLength={18}
+              value={alias}
+              placeholder="AFTER HOURS"
+              onChange={(e) => setAlias(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !busy && alias.trim()) void prepareIdent();
+              }}
+            />
+            <p className="hint">
+              {alias.trim()
+                ? station + " · No account. No actual transmission."
+                : "Type a callsign to open the channel. No account. No actual transmission."}
+            </p>
+            <button className="primary" disabled={busy || !alias.trim()} onClick={prepareIdent}>
+              {busy ? "PREPARING YOUR IDENT…" : "CONNECT TO CAMERA 08"} <Pencil size={18} />
+            </button>
+            <button className="quiet" onClick={() => setStage("intro")}>
+              <ArrowLeft size={16} /> Back to the van
+            </button>
+          </div>
+        </section>
+      )}
+      {stage === "watch" && (
+        <section className={"live-watch " + (watchPaused ? "paused" : "")}>
+          <div className="watch-picture">
+            {/* eslint-disable-next-line @next/next/no-img-element -- pre-sized WebP derivative; see file header. */}
+            <img
+              key={source}
+              src={display.feed[source]}
+              width={1440}
+              height={811}
+              loading="lazy"
+              decoding="async"
+              alt={
+                source === "dock"
+                  ? "The mascot makes a break along the dock"
+                  : "A second angle shows the sculpture changing hands"
+              }
+              onError={feedError("This camera feed")}
+            />
+          </div>
+          <div className="watch-vignette" />
+          <div className="watch-head">
+            <span>
+              <i /> {source === "dock" ? "DOCK CAMERA" : "PARTY PHONE"} / ILLUSTRATED FEED
+            </span>
+            <button
+              className="secondary"
+              onClick={() => setWatchPaused(!watchPaused)}
+              aria-label={watchPaused ? "Resume camera cuts" : "Pause camera cuts"}
+            >
+              {watchPaused ? <Play size={17} /> : <Pause size={17} />}
+            </button>
+          </div>
+          <div className="watch-caption" key={"caption-" + source}>
+            <span className="eyebrow">
+              {source === "dock"
+                ? "20:46 / THE AUCTION JUST WENT SIDEWAYS"
+                : "20:41 / FIVE MINUTES EARLIER"}
+            </span>
+            <h1 ref={heading} tabIndex={-1}>
+              {source === "dock" ? (
+                <>
+                  A golden fish.
+                  <br />A very bad exit.
+                </>
+              ) : (
+                <>
+                  Wait. Who handed
+                  <br />
+                  over the fish?
+                </>
+              )}
+            </h1>
+            <p>
+              {source === "dock"
+                ? "You have the picture. What do you make of it?"
+                : "Same night. A very different picture."}
+            </p>
+            <div className="watch-actions">
+              <button className="primary" onClick={() => openEditor(art[source], "edit", "watch")}>
+                FREEZE & EDIT THIS FRAME <Pencil size={19} />
+              </button>
+              {/* Co-primary: the camera desk holds both angles and the station
+                  ident, so it is no longer hidden behind a quiet link. */}
+              <button className="secondary" onClick={() => setStage("source")}>
+                OPEN THE CAMERA DESK <ArrowUpRight size={18} />
+              </button>
+            </div>
+            <div className="watch-cameras">
+              {(["dock", "party"] as Source[]).map((s, i) => (
+                <button
+                  key={s}
+                  className={source === s ? "active" : ""}
+                  onClick={() => {
+                    setSource(s);
+                    setWatchPaused(true);
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- pre-sized WebP derivative; see file header. */}
+                  <img
+                    src={display.thumb[s]}
+                    width={320}
+                    height={181}
+                    loading="lazy"
+                    decoding="async"
+                    alt=""
+                    onError={feedError("A camera thumbnail")}
+                  />
+                  <span>
+                    0{i + 1} / {s === "dock" ? "THE GETAWAY" : "THE HANDOFF"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+      {isEditor && (
+        <section className="workshop">
+          <div className="workshop-heading">
+            <button className="quiet" onClick={leaveEditor}>
+              <ArrowLeft size={16} /> Back
+            </button>
+            <div>
+              <span className="eyebrow">
+                {stage === "ident" ? "01 / STATION IDENT" : "02 / BROADCAST PLATE"}
+              </span>
+              <h1 ref={heading} tabIndex={-1}>
+                {stage === "ident" ? "Give the station a face." : "Make your angle visible."}
+              </h1>
+            </div>
+            <a
+              href="https://github.com/unlayer/react-image-editor"
+              target="_blank"
+              rel="noreferrer"
+            >
+              UNLAYER IMAGE EDITOR ↗
+            </a>
+          </div>
+          <p className="editor-brief">
+            {stage === "ident"
+              ? "Add your tag, change the mood, make a mark. Your exact saved artwork opens the show."
+              : "Reframe the moment. Mark up the detail or drop a lower third on it. Your exact saved image goes to Preview."}{" "}
+            <b>An untouched frame cannot air. Finish with Save inside the editor.</b>
+          </p>
+          <div className="editor-host" ref={editorHost} aria-busy={!editorReady || busy}>
+            {!editorReady && <div className="editor-loading">Opening the image desk…</div>}
+            {editorImage && (
+              <ImageEditor
+                ref={imageEditorRef}
+                key={editorKey}
+                image={editorImage}
+                options={options}
+                minHeight={570}
+                onLoad={onEditorLoad}
+                onSave={onSave}
+                onCancel={leaveEditor}
+                onError={() =>
+                  setIssue("The editor could not connect. Reload the image desk to try again.")
+                }
+                onLoadError={() =>
+                  setIssue("This image could not load. Return and open the image again.")
+                }
+              />
+            )}
+          </div>
+          <div className="editor-foot">
+            <span>GRADE · REFRAME · MARK UP · LOWER THIRD · BLOCK OUT · BUGS · BORDER</span>
+            {/* Remounting the editor clears every in-progress edit, so it asks
+                first instead of quietly throwing the visitor's work away. */}
+            {confirmReload ? (
+              <span className="reload-confirm" role="status">
+                Reloading clears the edits you have not saved.
+                <button
+                  className="quiet reload-danger"
+                  onClick={() => {
+                    setConfirmReload(false);
+                    setEditorReady(false);
+                    resetEditorGate();
+                    setEditorKey((k) => k + 1);
+                  }}
+                >
+                  Discard & reload
+                </button>
+                <button className="quiet" onClick={() => setConfirmReload(false)}>
+                  Keep editing
+                </button>
+              </span>
+            ) : (
+              <button className="quiet" onClick={() => setConfirmReload(true)}>
+                Reload image desk
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+      {stage === "source" && (
+        <section className="source-room">
+          <div className="source-heading">
+            <div>
+              <span className="eyebrow">YOUR STATION / CAMERA DESK</span>
+              <h1 ref={heading} tabIndex={-1}>
+                One night.
+                <br />
+                Two cameras.
+              </h1>
+              <p>
+                A mascot. A golden fish. An auction gone sideways.
+                <br />
+                Pick the frame you want the city to see.
+              </p>
+            </div>
+            <figure className="ident-proof">
+              {/* eslint-disable-next-line @next/next/no-img-element -- saved editor output is a data: URL; see file header. */}
+              <img
+                src={cut.ident}
+                width={1672}
+                height={941}
+                loading="lazy"
+                decoding="async"
+                alt="Your station ident"
+                onError={feedError("Your station ident")}
+              />
+              <figcaption>
+                <Check size={14} /> STATION IDENT / READY TO AIR
+              </figcaption>
+            </figure>
+          </div>
+          <div className="source-pair">
+            {(["dock", "party"] as Source[]).map((s, i) => (
+              <button
+                key={s}
+                className="source-choice"
+                onClick={() => {
+                  setSource(s);
+                  openEditor(art[s], "edit", "source");
+                }}
+              >
+                <div className="source-image">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- pre-sized WebP derivative; see file header. */}
+                  <img
+                    src={display.feed[s]}
+                    width={1440}
+                    height={811}
+                    loading="lazy"
+                    decoding="async"
+                    alt={
+                      s === "dock"
+                        ? "A pink marlin mascot carries a golden fish along the auction dock"
+                        : "A stage manager hands the golden fish to the mascot"
+                    }
+                    onError={feedError("This camera feed")}
+                  />
+                  <span className="source-number">0{i + 1}</span>
+                </div>
+                <div className="source-caption">
+                  <div>
+                    <h2>{s === "dock" ? "The getaway?" : "Before the commotion."}</h2>
+                    <p>
+                      {s === "dock"
+                        ? "DOCK CAMERA / THE MOMENT EVERYONE SAW"
+                        : "PARTY PHONE / THE ANGLE THEY MISSED"}
+                    </p>
+                  </div>
+                  <span>
+                    EDIT FRAME <ArrowUpRight size={18} />
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+          <div className="source-extras">
+            <button className="secondary" onClick={() => openEditor(cut.ident, "ident", "source")}>
+              STYLE MY STATION IDENT <Pencil size={16} />
+            </button>
+            <button className="quiet" onClick={() => setStage("watch")}>
+              Return to the camera feed <Play size={16} />
+            </button>
+          </div>
+        </section>
+      )}
+      {(stage === "desk" || stage === "call") && (
+        <section className="studio">
+          <div className="studio-caption">
+            <span className="eyebrow">MARLIN KEY AUCTION / CONTROL ROOM</span>
+            <span>
+              {live ? "ON AIR" : "STANDING BY"} ·{" "}
+              {String(Math.floor(elapsed / 60)).padStart(2, "0")}:
+              {String(elapsed % 60).padStart(2, "0")}
+            </span>
+          </div>
+          {/* The desk is the most-entered screen, so it gets the page heading
+              (and the arrival focus target) rather than going without one. */}
+          {stage === "desk" && (
+            <h1 className="studio-title" ref={heading} tabIndex={-1}>
+              Run the desk.
+            </h1>
+          )}
+          <div className="console-grid">
+            <aside className="preview-monitor">
+              {stage === "call" ? (
+                <div className="caller">
+                  <span className="caller-heading">
+                    <Phone /> CALLER 01
+                  </span>
+                  <div className="waveform" aria-hidden="true">
+                    ▂ ▄ ▆ ▃ ▅ ▇ ▄ ▂ ▅ ▃
+                  </div>
+                  <h1 ref={heading} tabIndex={-1}>
+                    {cut.source === "dock" ? (
+                      <>
+                        “That’s our performer.
+                        <br />
+                        The fish is a prop.”
+                      </>
+                    ) : (
+                      <>
+                        “That isn’t a prop.
+                        <br />
+                        Our trophy is missing.”
+                      </>
+                    )}
+                  </h1>
+                  <p>
+                    {cut.source === "dock"
+                      ? "Stage manager. One very different account."
+                      : "Auction organizer. One very different account."}
+                  </p>
+                  <button className="primary" onClick={() => decide("call")}>
+                    <Phone size={18} /> TAKE CALL
+                  </button>
+                  <button className="secondary" onClick={() => decide("hold")}>
+                    HOLD THE SHOT
+                  </button>
+                  {/* The switch used to put the raw camera PNG on air, wiping
+                      the visitor's edit off the monitor. Now it loads the other
+                      angle into the editor first and only records the switch
+                      once their own cut of it goes live. */}
+                  <button className="secondary" onClick={startSwitch}>
+                    SWITCH ANGLE — CUT IT FIRST <Pencil size={16} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="monitor-label">
+                    PREVIEW <span>NOT ON AIR</span>
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- saved editor output is a data: URL; see file header. */}
+                  <img
+                    className="preview-image"
+                    src={cut.preview || cut.ident}
+                    width={1672}
+                    height={941}
+                    loading="lazy"
+                    decoding="async"
+                    alt="Your saved image queued in Preview"
+                    onError={feedError("The preview image")}
+                  />
+                  <div className="cut-style" role="group" aria-label="Broadcast transition">
+                    <button aria-pressed={cutStyle === "hard"} onClick={() => setCutStyle("hard")}>
+                      HARD CUT
+                    </button>
+                    <button
+                      aria-pressed={cutStyle === "dissolve"}
+                      onClick={() => setCutStyle("dissolve")}
+                    >
+                      DISSOLVE
+                    </button>
+                  </div>
+                  <div className="preview-actions">
+                    <button
+                      className="primary"
+                      disabled={!cut.preview || cut.preview === cut.onAir}
+                      onClick={takeLive}
+                    >
+                      <Radio size={18} /> TAKE LIVE
+                    </button>
+                    <button
+                      className="secondary"
+                      onClick={() => openEditor(cut.preview || art[source], "edit", "desk")}
+                    >
+                      <Pencil size={16} /> EDIT FRAME
+                    </button>
+                  </div>
+                  <p className="monitor-note">
+                    {switchPending
+                      ? "Your cut of the other angle is in Preview. Take it live to switch cameras."
+                      : !live
+                        ? "Your image is ready. Take it live to start the show."
+                        : cut.preview && cut.preview !== cut.onAir
+                          ? "A newer cut is waiting in Preview. Take it live so the city sees it."
+                          : cut.decision === "call"
+                            ? "The caller is on record. Keep your eyes on the incoming line."
+                            : cut.decision === "hold"
+                              ? "You held your frame. Someone at the auction noticed."
+                              : cut.decision === "switch"
+                                ? "Your cut of the second angle is on air. The night is not over."
+                                : elapsed < 5
+                                  ? "Your picture is out there. Stay on the line."
+                                  : "An incoming call needs your attention."}
+                  </p>
+                </>
+              )}
+            </aside>
+            <div className="onair-monitor">
+              <div className="monitor-label">
+                <span className={live ? "live-dot" : ""} />
+                {live ? "ON AIR" : "STATION IDENT"}
+                <span>{station}</span>
+              </div>
+              <div className="program-image">
+                {/* eslint-disable-next-line @next/next/no-img-element -- saved editor output, or a canonical PNG that `openEditor` can re-open; see file header. */}
+                <img
+                  key={cut.onAir}
+                  src={cut.onAir || cut.ident}
+                  width={1672}
+                  height={941}
+                  loading="lazy"
+                  decoding="async"
+                  alt="The exact image currently on air"
+                  onError={feedError("The on-air image")}
+                />
+                <span className="station-bug">{station}</span>
+              </div>
+              <div className="onair-foot">
+                {stage === "call"
+                  ? "YOUR FRAME IS STILL ON AIR"
+                  : cut.corrected
+                    ? "REVISED PLATE / ON AIR"
+                    : "YOUR COAST. YOUR CUT."}
+                <span>CH 08</span>
+              </div>
+            </div>
+            <div className="camera-strip">
+              {(["dock", "party"] as Source[]).map((s, i) => (
+                <button
+                  key={s}
+                  className={"camera " + (source === s ? "selected" : "")}
+                  /*
+                   * Opening an angle in the editor is NOT an answer to the
+                   * caller. This used to dispatch the one-shot `decide`
+                   * action, which permanently and silently skipped the caller
+                   * scene; now the call is still waiting when you come back.
+                   */
+                  onClick={() => {
+                    setSource(s);
+                    openEditor(art[s], "edit", stage === "call" ? "call" : "desk");
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- pre-sized WebP derivative; see file header. */}
+                  <img
+                    src={display.thumb[s]}
+                    width={320}
+                    height={181}
+                    loading="lazy"
+                    decoding="async"
+                    alt={s === "dock" ? "Dock camera angle" : "Party phone angle"}
+                    onError={feedError("A camera thumbnail")}
+                  />
+                  <span>
+                    0{i + 1} /{" "}
+                    {s === "dock" ? "DOCK CAMERA" : stage === "call" ? "NEW ANGLE" : "PARTY PHONE"}{" "}
+                    <Pencil size={14} />
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="direction-strip">
+            <p>
+              {stage === "call"
+                ? "Answer the line, switch the camera, or recut your picture instead of answering. The thumbnails below just open the editor — the call keeps holding."
+                : cut.pressure !== "pending"
+                  ? "Your van is made. Get the picture out."
+                  : switchPending
+                    ? "Take your new angle live to switch cameras."
+                    : cut.decision !== "pending"
+                      ? "An unknown number has your attention."
+                      : live
+                        ? "The night has another angle."
+                        : "Your next click puts this picture on air."}
+            </p>
+            {stage === "call" ? (
+              /* This one IS an answer to the caller — it is recorded as the
+                 'revise' branch — so the label says so before the click. */
+              <button
+                className="quiet"
+                onClick={() => {
+                  dispatch({ type: "decide", decision: "revise" });
+                  openEditor(cut.onAir, "edit", "desk");
+                }}
+              >
+                Recut instead of answering <Pencil size={16} />
+              </button>
+            ) : cut.decision !== "pending" ? (
+              <button className="primary" disabled={busy} onClick={finish}>
+                {busy
+                  ? "CUTTING THE LAST SHOT…"
+                  : cut.pressure === "pending"
+                    ? "READ INCOMING MESSAGE"
+                    : "CUT & GET OUT"}{" "}
+                <ArrowUpRight size={18} />
+              </button>
+            ) : live ? (
+              <button className="quiet" onClick={() => setStage("call")}>
+                Answer incoming line <Phone size={16} />
+              </button>
+            ) : null}
+          </div>
+        </section>
+      )}
+      {(stage === "ending" || stage === "replay") && (
+        <section className="episode">
+          <div className="episode-heading">
+            <div>
+              <span className="eyebrow">
+                {station} / EPISODE {nightLabel}
+              </span>
+              <h1 ref={heading} tabIndex={-1}>
+                {stage === "ending" ? "That’s your broadcast." : "Your night, on record."}
+              </h1>
+              <p>{ending(cut)}</p>
+            </div>
+            <span className="episode-stamp">
+              OFF AIR
+              <br />
+              <small>{cut.shots.length} CUTS / ONE NIGHT</small>
+            </span>
+          </div>
+          <div className="episode-screen">
+            {/* eslint-disable-next-line @next/next/no-img-element -- recorded shot: a data: URL or a canonical PNG; see file header. */}
+            <img
+              key={stage === "replay" ? replayAt : "closing"}
+              src={
+                (stage === "replay" ? replayShot?.image : cut.shots.at(-1)?.image) ||
+                cut.onAir ||
+                cut.ident
+              }
+              width={1672}
+              height={941}
+              loading="lazy"
+              decoding="async"
+              alt={
+                stage === "replay"
+                  ? replayShot?.caption || "A recorded cut"
+                  : "Your final on-air image"
+              }
+              onError={feedError("This recorded frame")}
+            />
+            <span className="station-bug">{station}</span>
+            <div className="episode-subtitle">
+              {stage === "replay"
+                ? replayShot?.caption || "A recorded cut"
+                : "No perfect story. Just the cut you chose."}
+            </div>
+          </div>
+          {stage === "replay" && (
+            <div className="replay-controls">
+              <button
+                className="secondary"
+                aria-label={playing ? "Pause replay" : "Play replay"}
+                onClick={() => {
+                  if (replayAt >= replayLast) setReplayIndex(0);
+                  setPlaying(!playing);
+                }}
+              >
+                {playing ? <Pause size={18} /> : <Play size={18} />}
+              </button>
+              <Slider
+                min={0}
+                max={replayLast}
+                value={[replayAt]}
+                step={1}
+                disabled={replayLast === 0}
+                onValueChange={(v) => {
+                  setPlaying(false);
+                  setReplayIndex(Math.min(v[0], replayLast));
+                }}
+                aria-label="Episode cut"
+              />
+              <span>
+                CUT {replayAt + 1} / {cut.shots.length}
+              </span>
+            </div>
+          )}
+          <div className="episode-actions">
+            <button
+              className="primary"
+              onClick={() => {
+                setReplayIndex(0);
+                setPlaying(true);
+                setStage("replay");
+              }}
+            >
+              <Play size={18} /> REPLAY MY CUT
+            </button>
+            <button className="secondary" onClick={saveStill}>
+              <Download size={18} /> KEEP FRAME
+            </button>
+            <button className="secondary episode-card-action" disabled={busy} onClick={saveCard}>
+              <Download size={18} />
+              {busy ? "DEVELOPING…" : "KEEP EPISODE CARD"}
+            </button>
+            {/* A second night without re-running boot, callsign and the ident:
+                the branches are meant to be explored. */}
+            <button className="secondary run-another" onClick={runAnotherNight}>
+              <Radio size={18} /> RUN ANOTHER NIGHT
+            </button>
+            <button className="quiet" onClick={retry}>
+              <RotateCcw size={16} /> Recut from interruption
+            </button>
+          </div>
+          <p className="episode-note">
+            Your saved artwork, callsign, choices, and closing frame become one downloadable episode
+            card. <b>RUN ANOTHER NIGHT</b> keeps your station ident and takes you back to the
+            cameras, so you can try the other angle, the other caller answer and the other warning
+            choice. Everything stays in this tab.
+          </p>
+        </section>
+      )}
+      <footer className="footer">
+        <span>DEAD AIR / INDEPENDENT COASTAL TELEVISION</span>
+        <span>
+          Music:{" "}
+          <a
+            href="https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100383"
+            target="_blank"
+            rel="noreferrer"
+          >
+            “Chase Pulse” · Kevin MacLeod
+          </a>{" "}
+          /{" "}
+          <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+            CC BY 4.0
+          </a>
+        </span>
+      </footer>
+    </main>
+  );
 }
