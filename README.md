@@ -13,7 +13,7 @@ _One continuous take of the live build: the frozen camera plate in React Image E
 1. Select **BOOT THE STATION**. The uplink terminal runs for about a second; the coral **SKIP INTRO** button, Enter or Esc leaves it immediately.
 2. Type any callsign and select **CONNECT TO CAMERA 08**.
 3. On the live feed, select **FREEZE & EDIT THIS FRAME**. React Image Editor opens on the full-resolution plate. Its runtime has been downloading since step 1, so it opens straight away.
-4. Make one visible move — MARK UP a line, add a LOWER THIRD, apply a GRADE — then use the editor's own **Save** control. An untouched Save is refused.
+4. Make one visible move — MARK UP a line, add a HEADLINE, apply a GRADE — then use the editor's own **Save** control. An untouched Save is refused.
 5. Your exact saved image is now in the **PREVIEW / YOUR CUT** monitor, the same size as the programme monitor beside it, with the preview bus lit coral. Select **TAKE LIVE** and it becomes the on-air picture.
 6. Watch **EYES ON CH 08** climb. When the meter fills, the fixer has found your antenna.
 7. Answer the caller, then answer the fixer's warning at the van. Select **CUT & GET OUT**, then **KEEP EPISODE CARD** to download a 1600 × 1200 card with your unmodified saved plate inside it.

@@ -440,6 +440,24 @@ button:hover:not(:disabled) {
   color: var(--cream);
   font-weight: 400;
 }
+.editor-first-move {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: -5px 0 16px;
+  padding: 10px 14px;
+  border-left: 2px solid #dcaa69;
+  background: rgba(220, 170, 105, .09);
+  color: #e4ded1;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.editor-first-move span {
+  flex: none;
+  color: #e6bb80;
+  font: 700 10px/1.4 monospace;
+  letter-spacing: .1em;
+}
 .editor-host {
   border: 1px solid #596064;
   position: relative;
@@ -1932,6 +1950,15 @@ button:hover:not(:disabled) {
   .editor-brief {
     font-size: 13px;
     margin: 12px 0 8px;
+  }
+  .editor-first-move {
+    display: block;
+    margin: 0 0 10px;
+    font-size: 12px;
+  }
+  .editor-first-move span {
+    display: block;
+    margin-bottom: 4px;
   }
   .editor-cramped {
     padding: 11px 16px 14px;

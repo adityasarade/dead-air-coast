@@ -1,10 +1,16 @@
 # Status — Dead Air
 
-**State:** Shipped, with an interface and world-building pass sitting in the working tree.
+**State:** Shipped and verified, including the final 20 September clarity and editor-rail pass.
 
-The published commit `4297481` and the live build at the canonical URL are in sync with each other. The changes described under "The interface and world-building pass changed" below are **not committed and not deployed** — they are verified locally against the Next production build and are waiting on a commit and a redeploy. Everything under "Confirmed against the live production build" refers to `4297481`.
+The public source and canonical URL carry the final build. The historical verification below refers to the 17 September pass; the final changes were checked again on 20 September.
 
 The canonical URL is **https://dead-air-coast.vercel.app**. The project's earlier generated hostname still resolves to the same deployment.
+
+## Final pass — 20 September 2026 (IST)
+
+- The camera feed now states the simple mission: the auction's golden fish is gone, and the visitor chooses whether the city sees the getaway or the handoff.
+- The image desk offers one concrete first move. Its narrow rail uses **HEADLINE** and **BOXES** in place of clipped tool labels, and the replay action says **RESTART REPLAY** while already replaying.
+- `npm test` passes all 31 tests, `npm run lint` passes, and `npm run build:vercel` passes. The rebuilt editor and phone-width presentation were visually checked in a real browser.
 
 ## Verified 17 September 2026 (IST)
 
@@ -34,15 +40,15 @@ The canonical URL is **https://dead-air-coast.vercel.app**. The project's earlie
 - **Experience:** the callsign field no longer ships with a personal name pre-filled, RUN ANOTHER NIGHT makes the branches reachable without a reload, the camera desk is on the main path, and switching angle now routes through the editor so what airs is always the visitor's own cut.
 - **Docs:** README gained a judge route, a three-capture propagation strip, the GTA VI framing and non-affiliation statement, a loop diagram, a screenshot table and a Known limits section. Three contradictory music documents were reduced to one accurate licence file. The unverified WebMCP block was removed rather than shipped.
 
-**External boundary:** starring the upstream repository, publishing a social post, and submitting the official form require the entrant account. No implementation can guarantee a subjective judging result.
+**External boundary:** the upstream repository is already starred. The entrant must still submit the official form for this entry; no implementation can guarantee a subjective judging result.
 
 ## Confirmed against the live production build
 
 - The callsign field opens empty with the CTA disabled, so no personal name ships.
-- The editor rail reads GRADE / REFRAME / MARK UP / LOWER THIRD / BLOCK OUT / BUGS / BORDER through the wrapper's supported `translations` option.
+- The editor rail reads GRADE / REFRAME / MARK UP / HEADLINE / BOXES / BUGS / BORDER through the wrapper's supported `translations` option.
 - A real draw stroke saved through the editor's own Save arrives on the on-air monitor as a `data:image/jpeg` URL — the exact export, not a re-render.
 - The desk stage carries a heading, the interruption dialog survives Escape while pending, and RUN ANOTHER NIGHT is reachable from the ending.
 - Landing transfer measured at **0.37 MB over 10 requests**, down from 2.45 MB.
 - Zero page errors and zero console errors across the full journey.
 
-**Next gate:** commit and redeploy the working-tree pass, then star the React Image Editor repository, optionally publish the prepared social post, then submit the official form before **24 September 2026 at 23:59 UTC (25 September, 05:29 IST)**.
+**Next gate:** submit the official form before **24 September 2026 at 23:59 UTC (25 September, 05:29 IST)**. Draft answers are in `docs/submission-kit.md`.

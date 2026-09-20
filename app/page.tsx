@@ -123,8 +123,8 @@ const options = {
       "image_editor.tools.filter": "GRADE",
       "image_editor.tools.crop": "REFRAME",
       "image_editor.tools.draw": "MARK UP",
-      "image_editor.tools.text": "LOWER THIRD",
-      "image_editor.tools.shapes": "BLOCK OUT",
+      "image_editor.tools.text": "HEADLINE",
+      "image_editor.tools.shapes": "BOXES",
       "image_editor.tools.stickers": "BUGS",
       "image_editor.tools.frame": "BORDER",
     },
@@ -1177,8 +1177,8 @@ export default function Home() {
             </h1>
             <p>
               {source === "dock"
-                ? "You have the picture. What do you make of it?"
-                : "Same night. A very different picture."}
+                ? "The auction's golden fish is gone. Choose what the city sees: the getaway or the handoff."
+                : "Five minutes earlier, the fish changed hands. Is this the story you put on air?"}
             </p>
             <div className="watch-actions">
               <button className="primary" onClick={() => openEditor(art[source], "edit", "watch")}>
@@ -1244,8 +1244,14 @@ export default function Home() {
           <p className="editor-brief">
             {stage === "ident"
               ? "Add your tag, change the mood, make a mark. Your exact saved artwork opens the show."
-              : "Reframe the moment. Mark up the detail or drop a lower third on it. Your exact saved image goes to Preview."}{" "}
+              : "Reframe the moment. Mark up the detail or add a headline. Your exact saved image goes to Preview."}{" "}
             <b>An untouched frame cannot air. Finish with Save inside the editor.</b>
+          </p>
+          <p className="editor-first-move">
+            <span>FIRST MOVE</span>
+            {stage === "ident"
+              ? "Open HEADLINE and add your station's slogan, or make any visible mark. Then Save."
+              : "Open HEADLINE and name what your camera caught, or mark the detail that proves it. Then Save."}
           </p>
           {/* Phone-only, via CSS: at 390 px the rail, the canvas and the Save
               control are all on screen but tight, and turning the handset
@@ -1321,7 +1327,7 @@ export default function Home() {
             )}
           </div>
           <div className="editor-foot">
-            <span>GRADE · REFRAME · MARK UP · LOWER THIRD · BLOCK OUT · BUGS · BORDER</span>
+            <span>GRADE · REFRAME · MARK UP · HEADLINE · BOXES · BUGS · BORDER</span>
             {/* Remounting the editor clears every in-progress edit, so it asks
                 first instead of quietly throwing the visitor's work away. */}
             {confirmReload ? (
@@ -1787,7 +1793,7 @@ export default function Home() {
                 setStage("replay");
               }}
             >
-              <Play size={18} /> REPLAY MY CUT
+              <Play size={18} /> {stage === "replay" ? "RESTART REPLAY" : "REPLAY MY CUT"}
             </button>
             <button className="secondary" onClick={saveStill}>
               <Download size={18} /> KEEP FRAME
