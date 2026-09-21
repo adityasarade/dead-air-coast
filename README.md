@@ -16,7 +16,7 @@ _One continuous take of the live build: the frozen camera plate in React Image E
 4. Make one visible move — MARK UP a line, add a HEADLINE, apply a GRADE — then use the editor's own **Save** control. An untouched Save is refused.
 5. Your exact saved image is now in the **PREVIEW / YOUR CUT** monitor, the same size as the programme monitor beside it, with the preview bus lit coral. Select **TAKE LIVE** and it becomes the on-air picture.
 6. Watch **EYES ON CH 08** climb. When the meter fills, the fixer has found your antenna.
-7. Answer the caller, then answer the fixer's warning at the van. Select **CUT & GET OUT**, then **KEEP EPISODE CARD** to download a 1600 × 1200 card with your unmodified saved plate inside it.
+7. Answer the caller, then answer the fixer's warning at the van. Select **CUT & GET OUT**, review the three-beat broadcast ledger and browsable cut strip, then **KEEP BROADCAST DOSSIER** to download a 1600 × 1200 record with your unmodified saved plate, choices and exact cut log inside it.
 8. Select **RUN ANOTHER NIGHT** to see a different branch without redoing your ident.
 
 The moment worth watching is step 4 into step 5: the picture you saved in Unlayer is the picture the city sees. Nothing is re-rendered, re-encoded, or substituted between the two.
@@ -36,7 +36,7 @@ These are actual browser captures from the running application, not mockups. The
 **What is borrowed is a register, not an asset.** Three things, named plainly:
 
 1. **The coastal boom town that runs on crime.** Bright, humid, moneyed, and corrupt at every level — a place where the marina, the auction and the police radio are all part of the same economy. Dead Air answers it by handing you the least glamorous job in that world: running a pirate television van from a parking spot near a waterfront auction.
-2. **Satirical brands as world-building.** The genre says more about a city through its advertising than through its dialogue, so Marlin Key sells airtime. Ten original spots — a marina that takes only cash, a laundry with sixty locations and four customers, a currency exchange with nine branches and one depositor — run as lower thirds over the feed, as the PAID PROGRAMMING strip at the control desk, and as the sponsor credit on your closing frame and episode card. Every one of them is written for this project; see [`lib/sponsors.ts`](lib/sponsors.ts).
+2. **Satirical brands as world-building.** The genre says more about a city through its advertising than through its dialogue, so Marlin Key sells airtime. Ten original spots — a marina that takes only cash, a laundry with sixty locations and four customers, a currency exchange with nine branches and one depositor — run as lower thirds over the feed, as the PAID PROGRAMMING strip at the control desk, and as the sponsor credit on your closing frame and broadcast dossier. Every one of them is written for this project; see [`lib/sponsors.ts`](lib/sponsors.ts).
 3. **The pressure of attention.** The genre's wanted level, reinterpreted for a broadcaster: **EYES ON CH 08** climbs for as long as your picture is out there, and when the meter fills, the fixer has found your antenna. It is the station's own estimate and the interface labels it as such — nothing is measured, nothing is requested, no audience is counted. It is fiction that behaves consistently, not a metric.
 
 **Everything visible is original.** Marlin Key, NIGHTSIDE and every other callsign, the auction, the pink marlin mascot, the golden fish, the fixer, every sponsor, the captions and the sign-off lines were all written and illustrated for this project. Every business name was searched as a real trading name before it shipped, and three were rewritten because the search found live companies too close to them; `tests/station-texture.test.mjs` keeps the rejected names and every franchise term out of the list mechanically.
@@ -52,12 +52,12 @@ flowchart LR
   C -->|Take live| D[On air]
   D --> E[Caller:<br/>take, hold, recut<br/>or switch angle]
   E --> F[Fixer's warning:<br/>air it or protect the source]
-  F --> G[Closing shot + episode card]
+  F --> G[Closing shot + broadcast dossier]
   G -->|Run another night| A
   B -.->|the same exact pixels| G
 ```
 
-Remove React Image Editor and there is no picture to broadcast: Preview, the on-air monitor, the correction history, the replay and the episode card all render the one `dataUrl` the editor returned.
+Remove React Image Editor and there is no picture to broadcast: Preview, the on-air monitor, the correction history, the replay and the broadcast dossier all render the one `dataUrl` the editor returned.
 
 ## Screenshots
 
@@ -101,12 +101,12 @@ Stated plainly, because a judge will find these anyway.
 - Native Unlayer editing for the broadcast plate, with optional station-ident customization. An untouched Save is rejected, so the editor is a required story action rather than a decorative stop.
 - Preview and on-air are two identical 16:9 monitors side by side, a broadcast gallery: PREVIEW / YOUR CUT holds the actual Save output, the preview bus lights coral while it holds something unaired, and TAKE LIVE moves it across. The camera rack is a third column beside them rather than a row underneath.
 - EYES ON CH 08 — a five-segment attention meter that climbs while you are on air and summons the fixer when it fills. Declared fiction on screen.
-- Marlin Key's paid programming: ten original satirical spots, running as a bug over the live feed, as the PAID PROGRAMMING strip at the desk, and as the sponsor credit on the closing frame and the episode card.
+- Marlin Key's paid programming: ten original satirical spots, running as a bug over the live feed, as the PAID PROGRAMMING strip at the desk, and as the sponsor credit on the closing frame and the broadcast dossier.
 - Take the caller, hold your image, recut it, or switch the angle — the switch loads the other camera into the editor first, so what airs is always your own cut. Then air the fixer’s warning or protect the source. These choices change the on-air image and recorded episode.
 - Animated camera pans, a freeze-frame entry, hard-cut/dissolve choices, incoming notices and an accessible warning dialog. Reduced-motion settings disable auto camera cuts and animations.
-- Replay the recorded image/decision sequence, recut from the interruption, or run another night from the ending — which keeps your station ident and sends you back to the cameras, so the branches are explorable without a reload.
-- Download the exact edited frame or a 1600 × 1200 episode card that combines the callsign, night number, branch outcome, closing frame, sponsor credit, and unchanged saved editor export.
-- Every composite the app draws itself — the station ident, the closing shot and the episode card — uses shrink-to-fit display type on a stack that degrades predictably, so a long callsign is never squashed and no platform silently substitutes a different face.
+- Replay the recorded image/decision sequence from a direct-manipulation cut strip, read the picture/line/warning outcome ledger, recut from the interruption, or run another night from the ending — which keeps your station ident and sends you back to the cameras, so the branches are explorable without a reload.
+- Download the exact edited frame or a 1600 × 1200 broadcast dossier that combines the callsign, night number, all three branch outcomes, exact recorded frames, sponsor credit, and unchanged saved editor export.
+- Every composite the app draws itself — the station ident, the closing shot and the broadcast dossier — uses shrink-to-fit display type on a stack that degrades predictably, so a long callsign is never squashed and no platform silently substitutes a different face.
 - Licensed 135 BPM “Chase Pulse” by Kevin MacLeod, CC BY 4.0, with footer attribution. Off by default, with smooth scene fades and one active music player across same-origin tabs.
 
 This release animates illustrated stills, not generated video footage. Replay preserves sequence rather than real elapsed timing. Calls are captioned fiction, not live calls or recorded voice actors. There is no actual broadcast, and the on-screen attention estimate is declared fiction rather than a measurement.
@@ -125,8 +125,8 @@ Use Node 22.13+ and `npm ci`, then `npm run dev`. No API keys or account setup. 
 | `npm run format`       | Prettier over all sources, using the committed `.prettierrc`                  |
 | `npm run format:check` | Verify formatting without writing                                             |
 
-`npm run test` runs 31 tests. They check exact saved-image propagation, branch differences,
-correction history, recut restoration (which keeps the newest plate), per-plate captions, the
+`npm run test` runs 32 tests. They check exact saved-image propagation, branch differences,
+correction history, recut restoration (which keeps the newest plate), per-plate captions, the three-beat episode ledger, the
 attention estimate (it must only ever climb, must always reach the threshold that summons the
 fixer, must never read full before it does, and must never open a second night already hot), the
 paid-programming list (complete, unique, in the station's voice, and clear of every franchise term
@@ -148,7 +148,7 @@ The public competition build runs at [dead-air-coast.vercel.app](https://dead-ai
 
 ## Architecture
 
-`app/page.tsx` owns the visible stages and native Save callback. `lib/broadcast.ts` holds deterministic state transitions, the cut history and the attention estimate. `lib/editor-gate.ts` decides whether a Save is a genuine edit, from the tracked dirty flag and two image snapshots, and allows the save whenever the editor cannot be measured. `lib/editor-warmup.ts` pre-injects Unlayer's documented embed script so the editing step is not the first thing to touch the network. `lib/sponsors.ts` is Marlin Key's paid programming. `lib/canvas-type.ts` supplies the display and mono stacks plus the shrink-to-fit measurement used by all three canvas composites. `lib/audio.ts` plays one licensed recording with conservative scene-dependent gain. `lib/episode-card.ts` renders the downloadable episode card with Canvas while preserving the exact saved bitmap. `components/dead-air/boot-sequence.tsx` is the skippable uplink terminal that warms the camera previews.
+`app/page.tsx` owns the visible stages and native Save callback. `lib/broadcast.ts` holds deterministic state transitions, the cut history, the three-beat outcome ledger and the attention estimate. `lib/editor-gate.ts` decides whether a Save is a genuine edit, from the tracked dirty flag and two image snapshots, and allows the save whenever the editor cannot be measured. `lib/editor-warmup.ts` pre-injects Unlayer's documented embed script so the editing step is not the first thing to touch the network. `lib/sponsors.ts` is Marlin Key's paid programming. `lib/canvas-type.ts` supplies the display and mono stacks plus the shrink-to-fit measurement used by all three canvas composites. `lib/audio.ts` plays one licensed recording with conservative scene-dependent gain. `lib/episode-card.ts` renders the downloadable broadcast dossier with Canvas while preserving the exact saved bitmap. `components/dead-air/boot-sequence.tsx` is the skippable uplink terminal that warms the camera previews.
 
 The whole live experience is fifteen authored files:
 
@@ -162,7 +162,7 @@ lib/editor-warmup.ts                    warms Unlayer's hosted runtime, and the 
 lib/sponsors.ts                         ten original Marlin Key ad spots
 lib/canvas-type.ts                      canvas font stacks + shrink-to-fit measurement
 lib/audio.ts                            single licensed player, scene-dependent gain
-lib/episode-card.ts                     1600 x 1200 episode card via Canvas
+lib/episode-card.ts                     1600 x 1200 broadcast dossier via Canvas
 lib/utils.ts                            cn() class merge
 components/dead-air/boot-sequence.tsx   the uplink terminal
 components/ui/                          5 shadcn primitives: button, dialog, progress,
@@ -192,7 +192,7 @@ light without reducing editable plate quality.
   to pass through anyway. The default angle's full-resolution PNG follows at `fetchPriority="low"`,
   strictly after the runtime, so it never competes with it. The other angle's PNG still loads only
   when the visitor opens that angle.
-- The two canvas composites and the episode card draw from derivatives that are still larger
+- The two canvas composites and the broadcast dossier draw from derivatives that are still larger
   than their output boxes, so they only ever downscale.
 
 | Surface                  |                       Before |                                            After |
@@ -232,7 +232,7 @@ the editor boundary that keeps derivatives out of the editor.
 
 See [art provenance](docs/art-provenance.md) and [music license](docs/music-license.md). No artwork from Saltline, Second Take or external entries is used. No Rockstar assets, franchise characters, trailer footage or samples. Lucide icons retain their license in [docs/LUCIDE-LICENSE.txt](docs/LUCIDE-LICENSE.txt).
 
-Build/type/lint checks and 31 unit tests are the automated validation scope. On 14 September 2026, a browser acceptance pass also covered desktop and 390 × 844 layouts, the full editor-to-broadcast path, untouched-Save rejection, branching, replay, and both PNG downloads. The downloaded episode card was inspected at its native 1600 × 1200 size. Music remains optional and off by default; listening quality is necessarily device- and listener-dependent.
+Build/type/lint checks and 32 unit tests are the automated validation scope. On 14 September 2026, a browser acceptance pass also covered desktop and 390 × 844 layouts, the full editor-to-broadcast path, untouched-Save rejection, branching, replay, and both PNG downloads. The downloadable broadcast record is 1600 × 1200. Music remains optional and off by default; listening quality is necessarily device- and listener-dependent.
 
 On 17 September 2026 a maintenance pass reformatted the sources with Prettier, removed the unused
 scaffolding, added the WebP display derivatives and the social preview card. Verified in that
@@ -258,7 +258,7 @@ On 17 September 2026 an interface and world-building pass followed the defect pa
   4:3 box next to a full-size monitor showing the auto-composed ident; the preview bus now also
   lights coral whenever it holds something unaired, so TAKE LIVE needs no explanation. The channel
   bug no longer prints the callsign on top of the ident that already carries it.
-- **The canvas composites.** The station ident, the closing shot and the episode card were all
+- **The canvas composites.** The station ident, the closing shot and the broadcast dossier were all
   drawn in `Impact` — a font absent on Linux and Android, where they silently fell back — with
   long callsigns horizontally squashed by `fillText`'s `maxWidth`. They now share
   `lib/canvas-type.ts`: a predictable heavy-sans stack, shrink-to-fit measurement, registration

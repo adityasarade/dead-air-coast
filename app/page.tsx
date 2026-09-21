@@ -46,6 +46,7 @@ import {
   cutReducer,
   emptyCut,
   ending,
+  episodeBeats,
   type Source,
 } from "@/lib/broadcast";
 import { judgeEditorSave } from "@/lib/editor-gate";
@@ -322,6 +323,8 @@ export default function Home() {
   const replayLast = Math.max(0, cut.shots.length - 1);
   const replayAt = Math.min(replayIndex, replayLast);
   const replayShot = cut.shots[replayAt];
+  const episodeActive = stage === "replay" ? replayAt : Math.max(0, cut.shots.length - 1);
+  const outcome = episodeBeats(cut);
   useEffect(() => {
     const m = window.matchMedia("(prefers-reduced-motion: reduce)");
     const change = () => setReduced(m.matches);
@@ -855,10 +858,10 @@ export default function Home() {
       // reached through RUN ANOTHER NIGHT, so it disagreed with the heading it
       // was exported from.
       const card = await makeEpisodeCard(station, cut, night, sponsor);
-      download(card, "dead-air-" + slug(station) + "-episode-card.png");
-      setToast("Episode card developed. Your exact cut is inside it.");
+      download(card, "dead-air-" + slug(station) + "-broadcast-dossier.png");
+      setToast("Broadcast dossier developed. Your exact cut and every decision are inside it.");
     } catch {
-      setIssue("The episode card could not export. Your replay is still available.");
+      setIssue("The broadcast dossier could not export. Your replay is still available.");
     } finally {
       setBusy(false);
     }
@@ -1728,32 +1731,75 @@ export default function Home() {
               <small>{cut.shots.length} CUTS / ONE NIGHT</small>
             </span>
           </div>
-          <div className="episode-screen">
-            {/* eslint-disable-next-line @next/next/no-img-element -- recorded shot: a data: URL or a canonical PNG; see file header. */}
-            <img
-              key={stage === "replay" ? replayAt : "closing"}
-              src={
-                (stage === "replay" ? replayShot?.image : cut.shots.at(-1)?.image) ||
-                cut.onAir ||
-                cut.ident
-              }
-              width={1672}
-              height={941}
-              loading="lazy"
-              decoding="async"
-              alt={
-                stage === "replay"
+          <div className="episode-archive">
+            <div className="episode-screen">
+              {/* eslint-disable-next-line @next/next/no-img-element -- recorded shot: a data: URL or a canonical PNG; see file header. */}
+              <img
+                key={stage === "replay" ? replayAt : "closing"}
+                src={
+                  (stage === "replay" ? replayShot?.image : cut.shots.at(-1)?.image) ||
+                  cut.onAir ||
+                  cut.ident
+                }
+                width={1672}
+                height={941}
+                loading="lazy"
+                decoding="async"
+                alt={
+                  stage === "replay"
+                    ? replayShot?.caption || "A recorded cut"
+                    : "Your final on-air image"
+                }
+                onError={feedError("This recorded frame")}
+              />
+              <span className="station-bug">{station}</span>
+              <div className="episode-subtitle">
+                {stage === "replay"
                   ? replayShot?.caption || "A recorded cut"
-                  : "Your final on-air image"
-              }
-              onError={feedError("This recorded frame")}
-            />
-            <span className="station-bug">{station}</span>
-            <div className="episode-subtitle">
-              {stage === "replay"
-                ? replayShot?.caption || "A recorded cut"
-                : "No perfect story. Just the cut you chose."}
+                  : "No perfect story. Just the cut you chose."}
+              </div>
             </div>
+            <aside className="broadcast-ledger" aria-label="Your broadcast decisions">
+              <span className="eyebrow">BROADCAST LEDGER / NIGHT {nightLabel}</span>
+              <h2>What the city saw</h2>
+              {outcome.map((beat, index) => (
+                <div className="ledger-beat" key={beat.label}>
+                  <span>
+                    {String(index + 1).padStart(2, "0")} / {beat.label}
+                  </span>
+                  <strong>{beat.headline}</strong>
+                  <p>{beat.detail}</p>
+                </div>
+              ))}
+              <small>YOUR EDITED PIXELS STAY UNCHANGED FROM SAVE TO SIGN-OFF.</small>
+            </aside>
+          </div>
+          <div className="episode-cut-strip" aria-label="Recorded cuts">
+            {cut.shots.map((shot, index) => (
+              <button
+                key={shot.id}
+                className={index === episodeActive ? "active" : ""}
+                aria-pressed={index === episodeActive}
+                onClick={() => {
+                  setPlaying(false);
+                  setReplayIndex(index);
+                  setStage("replay");
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- recorded editor output; see file header. */}
+                <img
+                  src={shot.image}
+                  width={168}
+                  height={95}
+                  loading="lazy"
+                  decoding="async"
+                  alt=""
+                  onError={feedError(`Recorded cut ${index + 1}`)}
+                />
+                <span>CUT {String(index + 1).padStart(2, "0")}</span>
+                <small>{shot.caption}</small>
+              </button>
+            ))}
           </div>
           {stage === "replay" && (
             <div className="replay-controls">
@@ -1800,7 +1846,7 @@ export default function Home() {
             </button>
             <button className="secondary episode-card-action" disabled={busy} onClick={saveCard}>
               <Download size={18} />
-              {busy ? "DEVELOPING…" : "KEEP EPISODE CARD"}
+              {busy ? "DEVELOPING…" : "KEEP BROADCAST DOSSIER"}
             </button>
             {/* A second night without re-running boot, callsign and the ident:
                 the branches are meant to be explored. */}
@@ -1818,11 +1864,11 @@ export default function Home() {
             <small>{sponsor.strap}</small>
           </div>
           <p className="episode-note">
-            Your saved artwork, callsign, choices, and closing frame become one downloadable episode
-            card. <b>RUN ANOTHER NIGHT</b> keeps your station ident and takes you back to the
-            cameras, so you can try the other angle, the other caller answer and the other warning
-            choice. Everything stays in this tab. Channel 08 sells airtime to {sponsors.length}{" "}
-            Marlin Key businesses, none of which exist.
+            Your saved artwork, callsign, full cut log, choices, and closing frame become one
+            downloadable broadcast dossier. <b>RUN ANOTHER NIGHT</b> keeps your station ident and
+            takes you back to the cameras, so you can try the other angle, the other caller answer
+            and the other warning choice. Everything stays in this tab. Channel 08 sells airtime to{" "}
+            {sponsors.length} Marlin Key businesses, none of which exist.
           </p>
         </section>
       )}

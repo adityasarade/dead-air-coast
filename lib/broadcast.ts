@@ -16,6 +16,11 @@ export type Cut = {
   corrected: boolean;
   pressure: "pending" | "air" | "protect";
 };
+export type EpisodeBeat = {
+  label: "PICTURE" | "LINE" | "WARNING";
+  headline: string;
+  detail: string;
+};
 export const emptyCut: Cut = {
   ident: "",
   preview: "",
@@ -216,4 +221,71 @@ export function ending(c: Cut) {
           : c.decision === "call"
             ? "You gave the other voice airtime."
             : "You stood by the first cut.";
+}
+
+/**
+ * The ending is intentionally a three-beat editorial receipt. The older
+ * single sentence only described the final warning, which hid the camera and
+ * caller decisions that made each branch different.
+ */
+export function episodeBeats(c: Cut): EpisodeBeat[] {
+  const plateCount = c.shots.filter((shot) => shot.kind === "plate").length;
+  const picture =
+    c.source === "dock"
+      ? {
+          headline: "AUCTION DOCK",
+          detail: `${plateCount} authored ${plateCount === 1 ? "cut" : "cuts"} carried the handoff across Channel 08.`,
+        }
+      : {
+          headline: "MARINA PARTY",
+          detail: `${plateCount} authored ${plateCount === 1 ? "cut" : "cuts"} turned the second camera into the story.`,
+        };
+  const line =
+    c.decision === "call"
+      ? {
+          headline: "CALLER PATCHED IN",
+          detail:
+            c.source === "dock"
+              ? "The city heard that the fish was a prop."
+              : "The city heard that the trophy was missing.",
+        }
+      : c.decision === "hold"
+        ? {
+            headline: "PICTURE HELD",
+            detail: "You left the accusation unanswered and stayed with the frame.",
+          }
+        : c.decision === "switch"
+          ? {
+              headline: "SECOND CAMERA LIVE",
+              detail: "You answered the interruption by changing what the city could see.",
+            }
+          : c.decision === "revise"
+            ? {
+                headline: "PICTURE RECUT",
+                detail: "You answered with a new edit instead of another voice.",
+              }
+            : {
+                headline: "LINE UNANSWERED",
+                detail: "The interruption never made it into the broadcast.",
+              };
+  const warning =
+    c.pressure === "air"
+      ? {
+          headline: "THREAT ON RECORD",
+          detail: "You showed the fixer and made the intimidation public.",
+        }
+      : c.pressure === "protect"
+        ? {
+            headline: "SOURCE PROTECTED",
+            detail: "You kept the fixer out of frame and moved the picture anyway.",
+          }
+        : {
+            headline: "NO WARNING LOGGED",
+            detail: "The van signed off before the warning was resolved.",
+          };
+  return [
+    { label: "PICTURE", ...picture },
+    { label: "LINE", ...line },
+    { label: "WARNING", ...warning },
+  ];
 }

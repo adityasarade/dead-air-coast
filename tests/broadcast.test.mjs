@@ -9,6 +9,7 @@ import {
   carriedAttention,
   cutReducer,
   emptyCut,
+  episodeBeats,
 } from "../lib/broadcast.ts";
 const ident = "data:image/png;base64,IDENT",
   first = "data:image/png;base64,USER1",
@@ -98,6 +99,20 @@ test("warning choice changes what airs while preserving the users edited plate",
   assert.equal(exposed.shots[1].image, first);
   assert.equal(protectedCut.shots.at(-1).image, first);
   assert.notEqual(exposed.shots.at(-1).caption, protectedCut.shots.at(-1).caption);
+});
+test("episode ledger preserves the picture, caller and warning decisions", () => {
+  let c = live();
+  c = cutReducer(c, { type: "decide", decision: "call" });
+  c = cutReducer(c, { type: "pressure", choice: "protect", image: second });
+  const beats = episodeBeats(c);
+  assert.deepEqual(
+    beats.map((beat) => beat.label),
+    ["PICTURE", "LINE", "WARNING"],
+  );
+  assert.equal(beats[0].headline, "AUCTION DOCK");
+  assert.equal(beats[1].headline, "CALLER PATCHED IN");
+  assert.equal(beats[2].headline, "SOURCE PROTECTED");
+  assert.match(beats[0].detail, /1 authored cut/);
 });
 test("recut clears the warning choice and duplicate warning actions do not rewrite history", () => {
   let c = cutReducer(live(), { type: "pressure", choice: "air", image: second });

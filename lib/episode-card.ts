@@ -1,4 +1,4 @@
-import { ending, type Cut } from "./broadcast";
+import { ending, episodeBeats, type Cut, type Shot } from "./broadcast";
 import { displayFont, fitText, monoFont, registrationMarks } from "./canvas-type";
 import { type Sponsor } from "./sponsors";
 
@@ -61,8 +61,28 @@ function wrap(
 
 export async function makeEpisodeCard(station: string, cut: Cut, night = 1, sponsor?: Sponsor) {
   const authored = cut.shots.filter((shot) => shot.kind === "plate").at(-1)?.image ?? cut.onAir;
-  const closing = cut.shots.at(-1)?.image ?? cut.onAir;
-  const [plate, finalFrame] = await Promise.all([loadImage(authored), loadImage(closing)]);
+  const select = (kind: Shot["kind"], last = false) => {
+    const matches = cut.shots.filter((shot) => shot.kind === kind);
+    return last ? matches.at(-1) : matches[0];
+  };
+  // Five frames read like a real edit log: ident, authored plate, interruption,
+  // warning and sign-off. Missing beats are simply omitted, and duplicate shot
+  // IDs are removed without touching the underlying editor exports.
+  const storyShots = [
+    select("ident"),
+    select("plate", true),
+    select("caller"),
+    select("pressure"),
+    select("closing", true),
+  ].filter(
+    (shot, index, shots): shot is Shot =>
+      !!shot && shots.findIndex((s) => s?.id === shot.id) === index,
+  );
+  const [plate, ...storyFrames] = await Promise.all([
+    loadImage(authored),
+    ...storyShots.map((shot) => loadImage(shot.image)),
+  ]);
+  const beats = episodeBeats(cut);
   const canvas = document.createElement("canvas");
   canvas.width = 1600;
   canvas.height = 1200;
@@ -99,7 +119,7 @@ export async function makeEpisodeCard(station: string, cut: Cut, night = 1, spon
   context.fillText("OFF AIR", 1310, 92);
   context.font = monoFont(18);
   context.letterSpacing = "2px";
-  context.fillText(`${cut.shots.length} CUTS / ONE NIGHT`, 1282, 132);
+  context.fillText(`${cut.shots.length} CUTS / ARCHIVE`, 1282, 132);
   context.letterSpacing = "0px";
   fitImage(context, plate, 72, 235, 930, 525);
   context.strokeStyle = "#111b21";
@@ -117,32 +137,50 @@ export async function makeEpisodeCard(station: string, cut: Cut, night = 1, spon
   context.fillStyle = "#efeadc";
   context.font = monoFont(20);
   context.letterSpacing = "2px";
-  context.fillText("THE CUT YOU CHOSE", 1090, 290);
+  context.fillText("THE NIGHT ON RECORD", 1090, 290);
   context.letterSpacing = "0px";
   context.fillStyle = "#e86151";
   context.font = displayFont(46);
   wrap(context, ending(cut).toUpperCase(), 1090, 360, 395, 56, 4);
-  context.fillStyle = "#b9c3b9";
-  context.font = "22px Georgia, serif";
-  wrap(
-    context,
-    cut.pressure === "air"
-      ? "You put the warning on record. The city heard the threat and the picture."
-      : "You kept the source out of frame. The picture crossed the city without giving them a face.",
-    1090,
-    610,
-    390,
-    34,
-    5,
-  );
-  fitImage(context, finalFrame, 1090, 770, 398, 224);
-  context.strokeStyle = "#efe7d4";
-  context.lineWidth = 3;
-  context.strokeRect(1090, 770, 398, 224);
+  beats.forEach((beat, index) => {
+    const y = 610 + index * 112;
+    context.fillStyle = "#e86151";
+    context.font = monoFont(14, 700);
+    context.letterSpacing = "2px";
+    context.fillText(`0${index + 1} / ${beat.label}`, 1090, y);
+    context.fillStyle = "#efe7d4";
+    context.font = monoFont(20, 700);
+    context.letterSpacing = "0px";
+    context.fillText(beat.headline, 1090, y + 29);
+    context.fillStyle = "#aebbbd";
+    context.font = "17px Georgia, serif";
+    wrap(context, beat.detail, 1090, y + 57, 390, 23, 2);
+  });
+  context.fillStyle = "#111b21";
+  context.font = monoFont(15, 700);
+  context.letterSpacing = "2px";
+  context.fillText("BROADCAST LOG / EXACT RECORDED FRAMES", 72, 876);
+  const gap = 14;
+  const frameWidth = (930 - gap * Math.max(0, storyFrames.length - 1)) / storyFrames.length;
+  storyFrames.forEach((frame, index) => {
+    const x = 72 + index * (frameWidth + gap);
+    fitImage(context, frame, x, 896, frameWidth, frameWidth * (9 / 16));
+    context.strokeStyle = index === 1 ? "#e86151" : "#111b21";
+    context.lineWidth = index === 1 ? 5 : 3;
+    context.strokeRect(x, 896, frameWidth, frameWidth * (9 / 16));
+    context.fillStyle = "#111b21";
+    context.font = monoFont(12, 700);
+    context.letterSpacing = "1px";
+    context.fillText(
+      `CUT ${String(index + 1).padStart(2, "0")}`,
+      x,
+      896 + frameWidth * (9 / 16) + 22,
+    );
+  });
   context.fillStyle = "#111b21";
   context.font = monoFont(18);
   context.letterSpacing = "1px";
-  context.fillText("YOUR COAST. YOUR CUT.", 72, 1080);
+  context.fillText("YOUR COAST. YOUR CUT. YOUR RECORD.", 72, 1080);
   context.fillText("EDITED WITH UNLAYER REACT IMAGE EDITOR", 72, 1116);
   if (sponsor) {
     // The night's paid spot, printed on the card the way a broadcaster credits

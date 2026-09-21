@@ -447,7 +447,7 @@ button:hover:not(:disabled) {
   margin: -5px 0 16px;
   padding: 10px 14px;
   border-left: 2px solid #dcaa69;
-  background: rgba(220, 170, 105, .09);
+  background: rgba(220, 170, 105, 0.09);
   color: #e4ded1;
   font-size: 13px;
   line-height: 1.5;
@@ -456,7 +456,7 @@ button:hover:not(:disabled) {
   flex: none;
   color: #e6bb80;
   font: 700 10px/1.4 monospace;
-  letter-spacing: .1em;
+  letter-spacing: 0.1em;
 }
 .editor-host {
   border: 1px solid #596064;
@@ -1005,6 +1005,8 @@ button:hover:not(:disabled) {
   justify-content: space-between;
   gap: 20px;
   margin-bottom: 25px;
+  max-width: 1250px;
+  margin-inline: auto;
 }
 .episode-heading h1 {
   font: clamp(30px, 3.5vw, 50px) Georgia;
@@ -1027,6 +1029,14 @@ button:hover:not(:disabled) {
 .episode-stamp small {
   font: 10px monospace;
 }
+.episode-archive {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(280px, 0.8fr);
+  gap: 18px;
+  max-width: 1250px;
+  margin-inline: auto;
+  align-items: stretch;
+}
 .episode-screen {
   position: relative;
   background: #060b10;
@@ -1034,12 +1044,110 @@ button:hover:not(:disabled) {
   /* Capped and centred so the closing frame, the replay controls and the
      sign-off actions all land inside one 720-px-tall window instead of
      pushing everything below the fold. */
-  max-height: min(56svh, 640px);
-  max-width: calc(min(56svh, 640px) * 16 / 9);
   width: 100%;
-  margin-inline: auto;
   border: 8px solid #2b343b;
   box-shadow: 0 0 0 1px #616465;
+}
+.broadcast-ledger {
+  background: #efe7d4;
+  color: #10191f;
+  border-top: 8px solid var(--coral);
+  padding: clamp(18px, 2.2vw, 30px);
+  box-shadow: inset 0 0 0 1px #10191f55;
+}
+.broadcast-ledger .eyebrow {
+  color: #6d483e;
+}
+.broadcast-ledger h2 {
+  font: clamp(26px, 2.5vw, 38px) var(--display);
+  line-height: 0.95;
+  margin: 10px 0 20px;
+}
+.ledger-beat {
+  border-top: 1px solid #10191f55;
+  padding: 13px 0;
+}
+.ledger-beat > span,
+.ledger-beat > strong,
+.ledger-beat > p {
+  display: block;
+}
+.ledger-beat > span {
+  color: #a13f34;
+  font: 11px monospace;
+  letter-spacing: 0.14em;
+}
+.ledger-beat > strong {
+  font: 18px var(--display);
+  letter-spacing: 0.03em;
+  margin: 5px 0 3px;
+}
+.ledger-beat > p {
+  color: #455057;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.broadcast-ledger > small {
+  display: block;
+  margin-top: 16px;
+  color: #59656a;
+  font: 10px monospace;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+}
+.episode-cut-strip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(170px, 1fr);
+  gap: 10px;
+  max-width: 1250px;
+  margin: 12px auto 0;
+  overflow-x: auto;
+  padding: 0 0 8px;
+  scrollbar-color: var(--coral) #151e24;
+}
+.episode-cut-strip button {
+  min-width: 0;
+  background: #111a20;
+  color: #d9d7cd;
+  border: 1px solid #3a454b;
+  padding: 7px;
+  text-align: left;
+}
+.episode-cut-strip button:hover,
+.episode-cut-strip button.active {
+  border-color: var(--coral);
+  background: #1c2428;
+}
+.episode-cut-strip img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+  filter: saturate(0.78) contrast(1.05);
+}
+.episode-cut-strip button.active img {
+  filter: none;
+}
+.episode-cut-strip span,
+.episode-cut-strip small {
+  display: block;
+}
+.episode-cut-strip span {
+  color: var(--coral);
+  font: 10px monospace;
+  letter-spacing: 0.12em;
+  margin-top: 7px;
+}
+.episode-cut-strip small {
+  font:
+    12px Georgia,
+    serif;
+  line-height: 1.3;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .episode-screen > img {
   width: 100%;
@@ -1064,6 +1172,8 @@ button:hover:not(:disabled) {
   flex-wrap: wrap;
   gap: 16px;
   margin: 25px 0;
+  max-width: 1250px;
+  margin-inline: auto;
 }
 .episode-actions .run-another {
   border-color: var(--coral);
@@ -1073,6 +1183,8 @@ button:hover:not(:disabled) {
   font-size: 13px;
   color: #b7b9af;
   line-height: 1.6;
+  max-width: 1250px;
+  margin-inline: auto;
 }
 .replay-controls {
   display: flex;
@@ -2133,6 +2245,12 @@ button:hover:not(:disabled) {
   }
   .episode-screen {
     border-width: 4px;
+  }
+  .episode-archive {
+    grid-template-columns: 1fr;
+  }
+  .broadcast-ledger {
+    border-top-width: 5px;
   }
   .episode-subtitle {
     font-size: 14px;
