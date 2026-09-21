@@ -1214,27 +1214,62 @@ button:hover:not(:disabled) {
 .notice button {
   background: transparent;
 }
-.help {
-  position: relative;
-  z-index: 9;
+.journey-guide {
+  position: fixed;
+  z-index: 80;
+  right: 22px;
+  bottom: 22px;
+  width: min(390px, calc(100vw - 32px));
   background: #e9dfc9;
   color: #16212a;
-  padding: 20px 5vw;
+  border-top: 7px solid var(--coral);
+  box-shadow:
+    0 18px 60px #0009,
+    inset 0 0 0 1px #16212a33;
+  padding: 20px;
+}
+.journey-guide-head,
+.journey-guide-actions {
   display: flex;
   align-items: center;
-  gap: 25px;
+  justify-content: space-between;
+  gap: 12px;
 }
-.help strong {
-  white-space: nowrap;
-  font: 20px Georgia;
+.journey-guide-head {
+  color: #8e3c33;
+  font: 700 10px monospace;
+  letter-spacing: 0.12em;
 }
-.help p {
+.journey-guide-head button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  color: inherit;
+}
+.journey-guide > strong {
+  display: block;
+  font:
+    24px Georgia,
+    serif;
+  margin: 10px 0 8px;
+}
+.journey-guide > p {
+  color: #3f4b50;
   font-size: 15px;
-  line-height: 1.6;
-  max-width: 850px;
+  line-height: 1.55;
 }
-.help button {
-  white-space: nowrap;
+.journey-guide-actions {
+  justify-content: flex-start;
+  margin-top: 16px;
+}
+.journey-guide-actions .primary {
+  min-height: 40px;
+  padding: 10px 18px;
+}
+.journey-guide-actions .quiet {
+  color: #4d575b;
 }
 /* Broadcast pacing: source motion, deliberate cuts, incoming pressure. */
 .soundtrack-invite {
@@ -1907,9 +1942,6 @@ button:hover:not(:disabled) {
   .arrival-art {
     object-position: 55% center;
   }
-  .help {
-    flex-wrap: wrap;
-  }
   .workshop-heading a {
     max-width: 170px;
     text-align: right;
@@ -1937,7 +1969,8 @@ button:hover:not(:disabled) {
     display: none;
   }
   .help-toggle {
-    display: none;
+    font-size: 10px;
+    padding-inline: 7px;
   }
   .sound-label {
     font-size: 10px;
@@ -2277,9 +2310,14 @@ button:hover:not(:disabled) {
     flex-direction: column;
     gap: 3px;
   }
-  .help {
-    padding: 20px;
-    gap: 10px;
+  .journey-guide {
+    right: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
+    padding: 17px;
+  }
+  .journey-guide > strong {
+    font-size: 21px;
   }
   .live-watch {
     height: calc(100svh - 60px);

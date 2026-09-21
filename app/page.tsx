@@ -74,6 +74,72 @@ type Stage =
   | "call"
   | "ending"
   | "replay";
+type JourneyGuide = {
+  key: string;
+  step: string;
+  title: string;
+  copy: string;
+};
+
+const GUIDE_STORAGE = "dead-air-journey-guide-v1";
+
+function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
+  if (stage === "intro")
+    return {
+      key: "arrival",
+      step: "01 / 07",
+      title: "You are the station operator.",
+      copy: "Boot the station, name your channel, edit a camera frame, then decide what Marlin Key sees. The full run takes about five minutes.",
+    };
+  if (stage === "name")
+    return {
+      key: "callsign",
+      step: "02 / 07",
+      title: "Give the station a callsign.",
+      copy: "Your name becomes the channel ident, on-air bug, sign-off and downloadable broadcast dossier. Short names read best on air.",
+    };
+  if (stage === "watch" || stage === "source")
+    return {
+      key: "camera",
+      step: "03 / 07",
+      title: "Catch the frame you want to air.",
+      copy: "The cameras alternate automatically. Pause if you need time, then freeze either angle and send that exact frame to the image desk.",
+    };
+  if (stage === "ident" || stage === "edit")
+    return {
+      key: stage === "ident" ? "ident-editor" : "picture-editor",
+      step: stage === "ident" ? "04 / 07" : "05 / 07",
+      title: stage === "ident" ? "Make the channel yours." : "Make one visible editorial move.",
+      copy:
+        stage === "ident"
+          ? "Customize the optional ident, then press the editor’s Save control. Your saved art becomes the station’s face for the rest of the night."
+          : "Use GRADE, REFRAME, MARK UP or HEADLINE, then press the editor’s Save control. An untouched frame cannot go to air.",
+    };
+  if (stage === "desk")
+    return {
+      key: live ? "on-air" : "preview",
+      step: "06 / 07",
+      title: live ? "The city is watching now." : "Preview is not live yet.",
+      copy: live
+        ? "EYES ON CH 08 climbs while your picture is out. The incoming call and warning will ask what you stand behind."
+        : "Your exact edit is waiting in PREVIEW / YOUR CUT. Select TAKE LIVE to move it to the programme monitor and start the broadcast.",
+    };
+  if (stage === "call")
+    return {
+      key: "caller",
+      step: "06 / 07",
+      title: "Choose what the interruption changes.",
+      copy: "Patch the caller through, hold the picture, recut it, or switch cameras. The choice is recorded in your episode—not merely acknowledged.",
+    };
+  if (stage === "ending" || stage === "replay")
+    return {
+      key: "archive",
+      step: "07 / 07",
+      title: "Your broadcast is on the record.",
+      copy: "Browse any cut, replay the night, keep an exact frame or download the full dossier. Run another night to explore a different branch without rebuilding your ident.",
+    };
+  return null;
+}
 /**
  * Canonical artwork. These are the untouched 1672 x 941 same-origin PNGs and the
  * ONLY thing that may ever reach Unlayer React Image Editor: `openEditor` and
@@ -195,7 +261,10 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [sound, setSound] = useState(false);
   const [musicLoading, setMusicLoading] = useState(false);
-  const [help, setHelp] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [guidesMuted, setGuidesMuted] = useState(false);
+  const [guideReady, setGuideReady] = useState(false);
+  const seenGuides = useRef(new Set<string>());
   const [elapsed, setElapsed] = useState(0);
   const [live, setLive] = useState(false);
   const [replayIndex, setReplayIndex] = useState(0);
@@ -325,6 +394,41 @@ export default function Home() {
   const replayShot = cut.shots[replayAt];
   const episodeActive = stage === "replay" ? replayAt : Math.max(0, cut.shots.length - 1);
   const outcome = episodeBeats(cut);
+  const currentGuide = journeyGuide(stage, live);
+  const persistGuides = useCallback((muted: boolean) => {
+    try {
+      window.localStorage.setItem(
+        GUIDE_STORAGE,
+        JSON.stringify({ muted, seen: [...seenGuides.current] }),
+      );
+    } catch {
+      /* Guidance still works for this visit when storage is unavailable. */
+    }
+  }, []);
+  useEffect(() => {
+    let muted = false;
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(GUIDE_STORAGE) || "null") as {
+        muted?: boolean;
+        seen?: string[];
+      } | null;
+      if (stored?.seen) seenGuides.current = new Set(stored.seen);
+      muted = Boolean(stored?.muted);
+    } catch {
+      /* A corrupt preference is equivalent to a first visit. */
+    }
+    queueMicrotask(() => {
+      setGuidesMuted(muted);
+      setGuideReady(true);
+    });
+  }, []);
+  useEffect(() => {
+    if (!guideReady || guidesMuted || pressureOpen || !currentGuide) return;
+    if (seenGuides.current.has(currentGuide.key)) return;
+    seenGuides.current.add(currentGuide.key);
+    persistGuides(false);
+    queueMicrotask(() => setGuideOpen(true));
+  }, [currentGuide, guideReady, guidesMuted, persistGuides, pressureOpen]);
   useEffect(() => {
     const m = window.matchMedia("(prefers-reduced-motion: reduce)");
     const change = () => setReduced(m.matches);
@@ -997,8 +1101,18 @@ export default function Home() {
           {stage === "intro" ? "YOUR COAST. YOUR CUT." : station + " / NIGHT " + nightLabel}
         </span>
         <div className="top-actions">
-          <button className="quiet help-toggle" onClick={() => setHelp(!help)} aria-expanded={help}>
-            How to play
+          <button
+            className="quiet help-toggle"
+            onClick={() => {
+              if (guidesMuted) {
+                setGuidesMuted(false);
+                persistGuides(false);
+              }
+              setGuideOpen(true);
+            }}
+            aria-expanded={guideOpen}
+          >
+            Guide
           </button>
           <label className="sound-label">
             {sound ? <Volume2 size={16} /> : <VolumeX size={16} />}
@@ -1007,18 +1121,31 @@ export default function Home() {
           </label>
         </div>
       </header>
-      {help && (
-        <aside className="help">
-          <strong>You run the broadcast.</strong>
-          <p>
-            Catch a camera moment and freeze it. Make your edit in Unlayer, then go live. Handle the
-            caller and the warning at your van. Your cuts decide what the city sees. The EYES ON CH
-            08 meter is the station’s own guess at who is watching — it is part of the fiction, not
-            a real audience — and when it fills, someone comes looking for the antenna.
-          </p>
-          <button className="quiet" onClick={() => setHelp(false)}>
-            Got it <X size={16} />
-          </button>
+      {guideOpen && currentGuide && !pressureOpen && (
+        <aside className="journey-guide" role="dialog" aria-labelledby="journey-guide-title">
+          <div className="journey-guide-head">
+            <span>{currentGuide.step} / FIELD GUIDE</span>
+            <button aria-label="Close guide" onClick={() => setGuideOpen(false)}>
+              <X size={16} />
+            </button>
+          </div>
+          <strong id="journey-guide-title">{currentGuide.title}</strong>
+          <p>{currentGuide.copy}</p>
+          <div className="journey-guide-actions">
+            <button className="primary" onClick={() => setGuideOpen(false)}>
+              GOT IT
+            </button>
+            <button
+              className="quiet"
+              onClick={() => {
+                setGuidesMuted(true);
+                setGuideOpen(false);
+                persistGuides(true);
+              }}
+            >
+              Stop tips
+            </button>
+          </div>
         </aside>
       )}
       {issue && (
