@@ -87,6 +87,22 @@ button {
 button:hover:not(:disabled) {
   filter: brightness(1.08);
 }
+.guide-target-highlight {
+  animation: guide-target-pulse 1.7s ease-out both;
+}
+@keyframes guide-target-pulse {
+  0%,
+  100% {
+    outline-color: transparent;
+    outline-offset: 12px;
+  }
+  24%,
+  72% {
+    outline: 4px solid #fae5aa;
+    outline-offset: 5px;
+    box-shadow: 0 0 0 7px #ef594a66;
+  }
+}
 .topbar {
   height: 70px;
   display: flex;
@@ -2537,6 +2553,11 @@ button:hover:not(:disabled) {
    Accessibility: prefers-reduced-motion
    --------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
+  .guide-target-highlight {
+    animation: none;
+    outline: 4px solid #fae5aa;
+    outline-offset: 5px;
+  }
   *,
   *:before,
   *:after {

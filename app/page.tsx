@@ -79,6 +79,8 @@ type JourneyGuide = {
   step: string;
   title: string;
   copy: string;
+  action: string;
+  target?: string;
 };
 
 const GUIDE_STORAGE = "dead-air-journey-guide-v1";
@@ -90,6 +92,8 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
       step: "ARRIVAL",
       title: "You are the station operator.",
       copy: "Boot the station, name your channel, edit a camera frame, then decide what Marlin Key sees. The full run takes about five minutes.",
+      action: "SHOW ME THE STATION",
+      target: '[data-guide-target="boot"]',
     };
   if (stage === "name")
     return {
@@ -97,6 +101,8 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
       step: "CALLSIGN",
       title: "Give the station a callsign.",
       copy: "Your name becomes the channel ident, on-air bug, sign-off and downloadable broadcast dossier. Short names read best on air.",
+      action: "NAME MY STATION",
+      target: '[data-guide-target="callsign"]',
     };
   if (stage === "watch" || stage === "source")
     return {
@@ -104,6 +110,8 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
       step: "CAMERA",
       title: "Catch the frame you want to air.",
       copy: "The cameras alternate automatically. Pause if you need time, then freeze either angle and send that exact frame to the image desk.",
+      action: "CHOOSE A FRAME",
+      target: '[data-guide-target="freeze"]',
     };
   if (stage === "ident" || stage === "edit")
     return {
@@ -114,6 +122,8 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
         stage === "ident"
           ? "Customize the optional ident, then press the editor’s Save control. Your saved art becomes the station’s face for the rest of the night."
           : "Use GRADE, REFRAME, MARK UP or HEADLINE, then press the editor’s Save control. An untouched frame cannot go to air.",
+      action: "OPEN THE IMAGE DESK",
+      target: '[data-guide-target="editor"]',
     };
   if (stage === "desk")
     return {
@@ -123,6 +133,10 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
       copy: live
         ? "EYES ON CH 08 climbs while your picture is out. The incoming call and warning will ask what you stand behind."
         : "Your exact edit is waiting in PREVIEW / YOUR CUT. Select TAKE LIVE to move it to the programme monitor and start the broadcast.",
+      action: live ? "WATCH THE SIGNAL" : "TAKE MY EDIT LIVE",
+      target: live
+        ? '[data-guide-target="attention"]'
+        : '[data-guide-target="take-live"]',
     };
   if (stage === "call")
     return {
@@ -130,6 +144,8 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
       step: "CALLER",
       title: "Choose what the interruption changes.",
       copy: "Patch the caller through, hold the picture, recut it, or switch cameras. The choice is recorded in your episode—not merely acknowledged.",
+      action: "ANSWER THE INTERRUPTION",
+      target: '[data-guide-target="caller"]',
     };
   if (stage === "ending" || stage === "replay")
     return {
@@ -137,6 +153,8 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
       step: "ARCHIVE",
       title: "Your broadcast is on the record.",
       copy: "Browse any cut, replay the night, keep an exact frame or download the full dossier. Run another night to explore a different branch without rebuilding your ident.",
+      action: "BROWSE MY CUTS",
+      target: '[data-guide-target="archive"]',
     };
   return null;
 }
@@ -395,6 +413,23 @@ export default function Home() {
   const episodeActive = stage === "replay" ? replayAt : Math.max(0, cut.shots.length - 1);
   const outcome = episodeBeats(cut);
   const currentGuide = journeyGuide(stage, live);
+  const followGuide = useCallback(() => {
+    const selector = currentGuide?.target;
+    setGuideOpen(false);
+    if (!selector) return;
+    window.requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(selector);
+      if (!target) return;
+      target.scrollIntoView({
+        behavior: reduced ? "auto" : "smooth",
+        block: "center",
+        inline: "nearest",
+      });
+      target.focus({ preventScroll: true });
+      target.classList.add("guide-target-highlight");
+      window.setTimeout(() => target.classList.remove("guide-target-highlight"), 1800);
+    });
+  }, [currentGuide, reduced]);
   const persistGuides = useCallback((muted: boolean) => {
     try {
       window.localStorage.setItem(
@@ -1151,8 +1186,8 @@ export default function Home() {
           <p id="journey-guide-copy">{currentGuide.copy}</p>
           <span className="guide-pause-note">The broadcast pauses while this note is open.</span>
           <div className="journey-guide-actions">
-            <button className="primary" onClick={() => setGuideOpen(false)}>
-              GOT IT
+            <button className="primary" onClick={followGuide}>
+              {currentGuide.action}
             </button>
             <button
               className="quiet"
@@ -1204,7 +1239,7 @@ export default function Home() {
             <span className="eyebrow">MARLIN KEY / 20:46</span>
             <h2>The city’s watching.</h2>
             <p>Freeze a camera, shape what it proves, then take your exact edit live.</p>
-            <button className="primary" onClick={bootStation}>
+            <button className="primary" data-guide-target="boot" onClick={bootStation}>
               BOOT THE STATION <ArrowUpRight size={20} />
             </button>
             <small>EDIT A FRAME → TAKE IT LIVE → FACE THE FALLOUT</small>
@@ -1244,6 +1279,7 @@ export default function Home() {
             <label htmlFor="station-name">ENTER CALLSIGN</label>
             <input
               id="station-name"
+              data-guide-target="callsign"
               maxLength={18}
               value={alias}
               placeholder="AFTER HOURS"
@@ -1330,7 +1366,11 @@ export default function Home() {
                 : "Five minutes earlier, the fish changed hands. Is this the story you put on air?"}
             </p>
             <div className="watch-actions">
-              <button className="primary" onClick={() => openEditor(art[source], "edit", "watch")}>
+              <button
+                className="primary"
+                data-guide-target="freeze"
+                onClick={() => openEditor(art[source], "edit", "watch")}
+              >
                 FREEZE & EDIT THIS FRAME <Pencil size={19} />
               </button>
               {/* Co-primary: the camera desk holds both angles and the station
@@ -1409,7 +1449,13 @@ export default function Home() {
             Tight on a phone? Turn it sideways. Tools run down the left edge, and at this width the
             editor’s own controls collapse to icons: <b>✕</b> cancels, <b>✓</b> saves.
           </p>
-          <div className="editor-host" ref={editorHost} aria-busy={!editorReady || busy}>
+          <div
+            className="editor-host"
+            ref={editorHost}
+            data-guide-target="editor"
+            tabIndex={-1}
+            aria-busy={!editorReady || busy}
+          >
             {!editorReady && !editorFailed && (
               <div className="editor-loading">
                 <span className="editor-loading-bar" aria-hidden="true" />
@@ -1534,6 +1580,7 @@ export default function Home() {
               <button
                 key={s}
                 className="source-choice"
+                data-guide-target={i === 0 ? "freeze" : undefined}
                 onClick={() => {
                   setSource(s);
                   openEditor(art[s], "edit", "source");
@@ -1593,7 +1640,11 @@ export default function Home() {
              * own estimate because that is all it is: see lib/broadcast.ts —
              * nothing is measured, nothing is requested, no one is counted.
              */}
-            <div className={"attention" + (hot ? " attention-hot" : "")}>
+            <div
+              className={"attention" + (hot ? " attention-hot" : "")}
+              data-guide-target="attention"
+              tabIndex={-1}
+            >
               <Eye size={15} />
               <span className="attention-label">EYES ON CH 08</span>
               <span className="attention-count">{attention.toLocaleString("en-US")}</span>
@@ -1651,7 +1702,11 @@ export default function Home() {
                       ? "Stage manager. One very different account."
                       : "Auction organizer. One very different account."}
                   </p>
-                  <button className="primary" onClick={() => decide("call")}>
+                  <button
+                    className="primary"
+                    data-guide-target="caller"
+                    onClick={() => decide("call")}
+                  >
                     <Phone size={18} /> TAKE CALL
                   </button>
                   <button className="secondary" onClick={() => decide("hold")}>
@@ -1696,6 +1751,7 @@ export default function Home() {
                   <div className="preview-actions">
                     <button
                       className="primary"
+                      data-guide-target="take-live"
                       disabled={!cut.preview || cut.preview === cut.onAir}
                       onClick={takeLive}
                     >
@@ -1979,6 +2035,7 @@ export default function Home() {
           <div className="episode-actions">
             <button
               className="primary"
+              data-guide-target="archive"
               onClick={() => {
                 setReplayIndex(0);
                 setPlaying(true);
