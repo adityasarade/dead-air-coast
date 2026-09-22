@@ -87,28 +87,28 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
   if (stage === "intro")
     return {
       key: "arrival",
-      step: "01 / 07",
+      step: "ARRIVAL",
       title: "You are the station operator.",
       copy: "Boot the station, name your channel, edit a camera frame, then decide what Marlin Key sees. The full run takes about five minutes.",
     };
   if (stage === "name")
     return {
       key: "callsign",
-      step: "02 / 07",
+      step: "CALLSIGN",
       title: "Give the station a callsign.",
       copy: "Your name becomes the channel ident, on-air bug, sign-off and downloadable broadcast dossier. Short names read best on air.",
     };
   if (stage === "watch" || stage === "source")
     return {
       key: "camera",
-      step: "03 / 07",
+      step: "CAMERA",
       title: "Catch the frame you want to air.",
       copy: "The cameras alternate automatically. Pause if you need time, then freeze either angle and send that exact frame to the image desk.",
     };
   if (stage === "ident" || stage === "edit")
     return {
       key: stage === "ident" ? "ident-editor" : "picture-editor",
-      step: stage === "ident" ? "04 / 07" : "05 / 07",
+      step: stage === "ident" ? "OPTIONAL IDENT" : "IMAGE DESK",
       title: stage === "ident" ? "Make the channel yours." : "Make one visible editorial move.",
       copy:
         stage === "ident"
@@ -118,7 +118,7 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
   if (stage === "desk")
     return {
       key: live ? "on-air" : "preview",
-      step: "06 / 07",
+      step: live ? "ON AIR" : "PREVIEW",
       title: live ? "The city is watching now." : "Preview is not live yet.",
       copy: live
         ? "EYES ON CH 08 climbs while your picture is out. The incoming call and warning will ask what you stand behind."
@@ -127,14 +127,14 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
   if (stage === "call")
     return {
       key: "caller",
-      step: "06 / 07",
+      step: "CALLER",
       title: "Choose what the interruption changes.",
       copy: "Patch the caller through, hold the picture, recut it, or switch cameras. The choice is recorded in your episode—not merely acknowledged.",
     };
   if (stage === "ending" || stage === "replay")
     return {
       key: "archive",
-      step: "07 / 07",
+      step: "ARCHIVE",
       title: "Your broadcast is on the record.",
       copy: "Browse any cut, replay the night, keep an exact frame or download the full dossier. Run another night to explore a different branch without rebuilding your ident.",
     };
@@ -430,6 +430,14 @@ export default function Home() {
     queueMicrotask(() => setGuideOpen(true));
   }, [currentGuide, guideReady, guidesMuted, persistGuides, pressureOpen]);
   useEffect(() => {
+    if (!guideOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setGuideOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [guideOpen]);
+  useEffect(() => {
     const m = window.matchMedia("(prefers-reduced-motion: reduce)");
     const change = () => setReduced(m.matches);
     m.addEventListener("change", change);
@@ -454,20 +462,20 @@ export default function Home() {
   // The ON AIR timecode runs for as long as the station is on air, through the
   // caller and the warning. A broadcast clock frozen at 00:05 reads as broken.
   useEffect(() => {
-    if (!live || (stage !== "desk" && stage !== "call")) return;
+    if (guideOpen || !live || (stage !== "desk" && stage !== "call")) return;
     const t = setInterval(() => setElapsed((current) => current + 1), 1000);
     return () => clearInterval(t);
-  }, [live, stage]);
+  }, [guideOpen, live, stage]);
   // The incoming line arrives on its own after five seconds on air — but never
   // on top of a cut the visitor has saved and not yet aired.
   useEffect(() => {
-    if (!live || stage !== "desk" || cut.decision !== "pending") return;
+    if (guideOpen || !live || stage !== "desk" || cut.decision !== "pending") return;
     if (cut.preview && cut.preview !== cut.onAir) return;
     const t = setTimeout(() => setStage("call"), Math.max(0, (5 - elapsed) * 1000));
     return () => clearTimeout(t);
-  }, [live, stage, elapsed, cut.decision, cut.preview, cut.onAir]);
+  }, [guideOpen, live, stage, elapsed, cut.decision, cut.preview, cut.onAir]);
   useEffect(() => {
-    if (!playing || stage !== "replay") return;
+    if (guideOpen || !playing || stage !== "replay") return;
     // One timer per shot, so the last shot still holds for its full beat and no
     // state is written from inside an updater.
     if (replayIndex >= cut.shots.length - 1) {
@@ -476,7 +484,7 @@ export default function Home() {
     }
     const t = setTimeout(() => setReplayIndex((i) => i + 1), 4200);
     return () => clearTimeout(t);
-  }, [playing, stage, replayIndex, cut.shots.length]);
+  }, [guideOpen, playing, stage, replayIndex, cut.shots.length]);
   // Track the editor's dirty flag while the visitor is working, and keep the
   // last-known-true value. Reading it only after a save races the runtime's own
   // post-save reset; see lib/editor-gate.ts.
@@ -543,10 +551,10 @@ export default function Home() {
     };
   }, [isEditor, editorReady, editorKey]);
   useEffect(() => {
-    if (stage !== "watch" || watchPaused || reduced) return;
+    if (guideOpen || stage !== "watch" || watchPaused || reduced) return;
     const timer = setInterval(() => setSource((s) => (s === "dock" ? "party" : "dock")), 6500);
     return () => clearInterval(timer);
-  }, [stage, watchPaused, reduced]);
+  }, [guideOpen, stage, watchPaused, reduced]);
   /*
    * Attention climbs for as long as the visitor's picture is on air. It is the
    * station's own estimate and the meter says so; nothing is measured and no
@@ -554,10 +562,10 @@ export default function Home() {
    * not accruing heat they cannot see.
    */
   useEffect(() => {
-    if (!live || (stage !== "desk" && stage !== "call")) return;
+    if (guideOpen || !live || (stage !== "desk" && stage !== "call")) return;
     const t = setInterval(() => setAttention((a) => attentionTick(a, Math.random())), 700);
     return () => clearInterval(t);
-  }, [live, stage]);
+  }, [guideOpen, live, stage]);
   /*
    * The fixer arrives when the meter fills, not on a stopwatch: the visitor
    * can watch the thing that summons him. The 2.5 s arm is a fail-safe, not
@@ -569,20 +577,26 @@ export default function Home() {
    * restart the interruption.
    */
   useEffect(() => {
-    if (stage !== "desk" || cut.decision === "pending" || cut.pressure !== "pending") return;
+    if (
+      guideOpen ||
+      stage !== "desk" ||
+      cut.decision === "pending" ||
+      cut.pressure !== "pending"
+    )
+      return;
     const timer = setTimeout(() => setPressureOpen(true), attentionHot(attention) ? 0 : 2500);
     return () => clearTimeout(timer);
-  }, [stage, cut.decision, cut.pressure, attention]);
+  }, [guideOpen, stage, cut.decision, cut.pressure, attention]);
   /*
    * Paid programming rotates on its own, the way a station bug does. Reduced
    * motion holds one spot and leaves the manual NEXT SPOT control as the only
    * way through them.
    */
   useEffect(() => {
-    if (reduced || (stage !== "desk" && stage !== "watch")) return;
+    if (guideOpen || reduced || (stage !== "desk" && stage !== "watch")) return;
     const t = setInterval(() => setSpot((s) => s + 1), 8000);
     return () => clearInterval(t);
-  }, [reduced, stage]);
+  }, [guideOpen, reduced, stage]);
   /*
    * An image in the server-rendered HTML can fail before React hydrates and
    * attaches its onError, so the error event is simply never delivered. Sweep
@@ -1122,7 +1136,11 @@ export default function Home() {
         </div>
       </header>
       {guideOpen && currentGuide && !pressureOpen && (
-        <aside className="journey-guide" role="dialog" aria-labelledby="journey-guide-title">
+        <aside
+          className="journey-guide"
+          aria-labelledby="journey-guide-title"
+          aria-describedby="journey-guide-copy"
+        >
           <div className="journey-guide-head">
             <span>{currentGuide.step} / FIELD GUIDE</span>
             <button aria-label="Close guide" onClick={() => setGuideOpen(false)}>
@@ -1130,7 +1148,8 @@ export default function Home() {
             </button>
           </div>
           <strong id="journey-guide-title">{currentGuide.title}</strong>
-          <p>{currentGuide.copy}</p>
+          <p id="journey-guide-copy">{currentGuide.copy}</p>
+          <span className="guide-pause-note">The broadcast pauses while this note is open.</span>
           <div className="journey-guide-actions">
             <button className="primary" onClick={() => setGuideOpen(false)}>
               GOT IT
@@ -1184,11 +1203,11 @@ export default function Home() {
           <div className="invitation">
             <span className="eyebrow">MARLIN KEY / 20:46</span>
             <h2>The city’s watching.</h2>
-            <p>Give it something worth seeing.</p>
+            <p>Freeze a camera, shape what it proves, then take your exact edit live.</p>
             <button className="primary" onClick={bootStation}>
               BOOT THE STATION <ArrowUpRight size={20} />
             </button>
-            <small>A five-minute broadcast. Yours to run.</small>
+            <small>EDIT A FRAME → TAKE IT LIVE → FACE THE FALLOUT</small>
             <button className="quiet soundtrack-invite" onClick={() => void toggleSound(!sound)}>
               {sound ? <Volume2 size={16} /> : <Play size={16} />}{" "}
               {musicLoading

@@ -1218,7 +1218,7 @@ button:hover:not(:disabled) {
   position: fixed;
   z-index: 80;
   right: 22px;
-  bottom: 22px;
+  top: 86px;
   width: min(390px, calc(100vw - 32px));
   background: #e9dfc9;
   color: #16212a;
@@ -1259,6 +1259,14 @@ button:hover:not(:disabled) {
   color: #3f4b50;
   font-size: 15px;
   line-height: 1.55;
+}
+.guide-pause-note {
+  display: block;
+  margin-top: 11px;
+  color: #7a443b;
+  font: 700 10px/1.45 monospace;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 .journey-guide-actions {
   justify-content: flex-start;
@@ -2312,9 +2320,11 @@ button:hover:not(:disabled) {
   }
   .journey-guide {
     right: 12px;
-    bottom: 12px;
+    top: 74px;
     width: calc(100vw - 24px);
-    padding: 17px;
+    max-height: calc(100svh - 86px);
+    overflow: auto;
+    padding: 16px;
   }
   .journey-guide > strong {
     font-size: 21px;
