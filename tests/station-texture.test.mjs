@@ -1,7 +1,33 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { sponsors, sponsorAt } from "../lib/sponsors.ts";
-import { DISPLAY_STACK, MONO_STACK, displayFont, fitText, monoFont } from "../lib/canvas-type.ts";
+import { DISPLAY_STACK, MONO_STACK, displayFont, fitText, fitTextLines, monoFont } from "../lib/canvas-type.ts";
+import { ending, episodeBeats, emptyCut } from "../lib/broadcast.ts";
+
+test("every dossier ending and decision keeps its complete sentence within the text box", () => {
+  const context = {
+    font: "",
+    measureText(text) {
+      return { width: text.length * Number(/([\d.]+)px/.exec(this.font)[1]) * .65 };
+    },
+  };
+  for (const source of ["dock", "party"]) {
+    for (const decision of ["call", "hold", "switch", "revise"]) {
+      for (const pressure of ["air", "protect"]) {
+        const cut = { ...emptyCut, source, decision, pressure };
+        const text = ending(cut).toUpperCase();
+        const lines = fitTextLines(context, text, 395, 4, 46, 12, displayFont);
+        assert.equal(lines.join(" "), text);
+        assert.ok(lines.length <= 4, text);
+        for (const beat of episodeBeats(cut)) {
+          const detail = fitTextLines(context, beat.detail, 390, 2, 17, 12, (size) => `${size}px Georgia`);
+          assert.equal(detail.join(" "), beat.detail);
+          assert.ok(detail.length <= 2, beat.detail);
+        }
+      }
+    }
+  }
+});
 
 /*
  * The competition FAQ requires assets and content the entrant created or has

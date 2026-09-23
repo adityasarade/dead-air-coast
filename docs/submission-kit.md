@@ -2,6 +2,8 @@
 
 Prepared on 14 September 2026 for Unlayer's Build With React Image Editor Challenge.
 
+Updated 23 September: clearer opening stakes, sharper mobile artwork, chapter progress, selective first-use guidance, accessible editor actions, and a prominent broadcast-dossier download. The X copy below is the current launch copy.
+
 Live build: https://dead-air-coast.vercel.app/
 
 Public source: https://github.com/adityasarade/dead-air-coast
@@ -16,37 +18,15 @@ Dead Air is an original five-minute pirate-TV micro-experience set on a fictiona
 
 ## X launch post
 
-Built DEAD AIR for @unlayer's #BuiltWithImageEditor challenge.
+pirate tv is a terrible place to discover editorial responsibility.
 
-Run a pirate TV station. Freeze and edit a coastal camera, take your exact cut live, survive the caller and the fixer, then keep the whole night as a broadcast dossier.
+built dead air for @unlayer’s #BuiltWithImageEditor challenge. the frame you edit becomes the broadcast, the evidence, and the night you have to stand behind.
 
 https://dead-air-coast.vercel.app
 
 Recommended attachment: `public/dead-air.gif`.
 
-## LinkedIn launch post
-
-What if the image editor was not a tool inside the experience, but the broadcast switch?
-
-I built **DEAD AIR: Your Coast, Your Cut** for Unlayer's Build With React Image Editor Challenge.
-
-It is a five-minute pirate-TV story set in the fictional city of Marlin Key. You name the station, freeze a live coastal camera, decide what the frame proves, and use React Image Editor to make that editorial choice visible.
-
-Then you put it on air.
-
-The exact image returned by Unlayer's Save action becomes the preview monitor, the live programme feed, the caller's disputed picture, the cut-by-cut replay, the downloadable frame, and the final broadcast dossier. An untouched frame cannot air, and there is no alternate result hidden behind the editor.
-
-Once the picture is live, the station starts attracting attention. A caller offers a competing version of what happened. A fixer finds the broadcast van. Holding the shot, recutting it, changing cameras, airing the threat, or protecting the source all change the recorded episode and its closing line.
-
-The part I enjoyed most was treating one saved image as story state rather than decoration. The editor creates the thing the rest of the experience has to stand behind.
-
-Try it: https://dead-air-coast.vercel.app
-
-Source: https://github.com/adityasarade/dead-air-coast
-
-#BuiltWithImageEditor #React #CreativeCoding #OpenSource
-
-Tag Unlayer through LinkedIn's company mention interface when publishing.
+Post on X, then paste the published post URL into your prefilled submission form. Review and submit the form yourself; drafts are not entries. No LinkedIn post is needed.
 
 ## Final launch order
 

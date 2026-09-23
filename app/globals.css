@@ -127,6 +127,14 @@ button:hover:not(:disabled) {
 .station-label {
   font: 12px monospace;
   letter-spacing: 0.2em;
+  text-align: center;
+}
+.station-label small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: .12em;
 }
 .top-actions,
 .sound-label {
@@ -266,6 +274,11 @@ button:hover:not(:disabled) {
   display: block;
   font-size: 14px;
   margin-top: 14px;
+}
+.invitation .arrival-promise {
+  font: 700 10px/1.5 monospace;
+  letter-spacing: .06em;
+  color: #655443;
 }
 .name-scene {
   min-height: calc(100svh - 70px);
@@ -1286,6 +1299,7 @@ button:hover:not(:disabled) {
 }
 .journey-guide-actions {
   justify-content: flex-start;
+  flex-wrap: wrap;
   margin-top: 16px;
 }
 .journey-guide-actions .primary {
@@ -2010,7 +2024,7 @@ button:hover:not(:disabled) {
     min-height: 670px;
   }
   .arrival-art {
-    object-position: 57% center;
+    object-position: 38% center;
   }
   .arrival-shade {
     background: linear-gradient(0deg, #070e14b0, transparent 85%);
@@ -2336,9 +2350,10 @@ button:hover:not(:disabled) {
   }
   .journey-guide {
     right: 12px;
-    top: 74px;
+    top: auto;
+    bottom: max(12px, env(safe-area-inset-bottom));
     width: calc(100vw - 24px);
-    max-height: calc(100svh - 86px);
+    max-height: 45svh;
     overflow: auto;
     padding: 16px;
   }

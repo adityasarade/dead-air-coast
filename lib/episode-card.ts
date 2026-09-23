@@ -1,5 +1,5 @@
 import { ending, episodeBeats, type Cut, type Shot } from "./broadcast";
-import { displayFont, fitText, monoFont, registrationMarks } from "./canvas-type";
+import { displayFont, fitText, fitTextLines, monoFont, registrationMarks } from "./canvas-type";
 import { type Sponsor } from "./sponsors";
 
 function loadImage(source: string) {
@@ -42,21 +42,12 @@ function wrap(
   lineHeight: number,
   maxLines = 5,
 ) {
-  const words = text.split(/\s+/);
-  let line = "",
-    lineNumber = 0;
-  for (const word of words) {
-    const next = line ? `${line} ${word}` : word;
-    if (context.measureText(next).width <= maxWidth) {
-      line = next;
-      continue;
-    }
-    context.fillText(line, x, y + lineNumber * lineHeight);
-    line = word;
-    lineNumber += 1;
-    if (lineNumber >= maxLines - 1) break;
-  }
-  if (line && lineNumber < maxLines) context.fillText(line, x, y + lineNumber * lineHeight);
+  const originalFont = context.font;
+  const size = Number(/(\d+(?:\.\d+)?)px/.exec(originalFont)?.[1] ?? 17);
+  const lines = fitTextLines(context, text, maxWidth, maxLines, size, 12,
+    (next) => originalFont.replace(/\d+(?:\.\d+)?px/, `${next}px`));
+  lines.forEach((line, index) => context.fillText(line, x, y + index * lineHeight));
+  context.font = originalFont;
 }
 
 export async function makeEpisodeCard(station: string, cut: Cut, night = 1, sponsor?: Sponsor) {

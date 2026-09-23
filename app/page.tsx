@@ -50,9 +50,10 @@ import {
   type Source,
 } from "@/lib/broadcast";
 import { judgeEditorSave } from "@/lib/editor-gate";
+import { labelEditorActions } from "@/lib/editor-accessibility";
 import { StationAudio } from "@/lib/audio";
 import { warmImageEditor } from "@/lib/editor-warmup";
-import { sponsorAt, sponsors } from "@/lib/sponsors";
+import { sponsorAt } from "@/lib/sponsors";
 import {
   DISPLAY_STACK,
   MONO_STACK,
@@ -92,7 +93,7 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
       step: "ARRIVAL",
       title: "You are the station operator.",
       copy: "Boot the station, name your channel, edit a camera frame, then decide what Marlin Key sees. The full run takes about five minutes.",
-      action: "SHOW ME THE STATION",
+      action: "SHOW THE START BUTTON",
       target: '[data-guide-target="boot"]',
     };
   if (stage === "name")
@@ -101,7 +102,7 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
       step: "CALLSIGN",
       title: "Give the station a callsign.",
       copy: "Your name becomes the channel ident, on-air bug, sign-off and downloadable broadcast dossier. Short names read best on air.",
-      action: "NAME MY STATION",
+      action: "SHOW THE CALLSIGN FIELD",
       target: '[data-guide-target="callsign"]',
     };
   if (stage === "watch" || stage === "source")
@@ -110,7 +111,7 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
       step: "CAMERA",
       title: "Catch the frame you want to air.",
       copy: "The cameras alternate automatically. Pause if you need time, then freeze either angle and send that exact frame to the image desk.",
-      action: "CHOOSE A FRAME",
+      action: "SHOW THE FREEZE CONTROL",
       target: '[data-guide-target="freeze"]',
     };
   if (stage === "ident" || stage === "edit")
@@ -122,7 +123,7 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
         stage === "ident"
           ? "Customize the optional ident, then press the editor’s Save control. Your saved art becomes the station’s face for the rest of the night."
           : "Use GRADE, REFRAME, MARK UP or HEADLINE, then press the editor’s Save control. An untouched frame cannot go to air.",
-      action: "OPEN THE IMAGE DESK",
+      action: "SHOW THE IMAGE DESK",
       target: '[data-guide-target="editor"]',
     };
   if (stage === "desk")
@@ -133,7 +134,7 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
       copy: live
         ? "EYES ON CH 08 climbs while your picture is out. The incoming call and warning will ask what you stand behind."
         : "Your exact edit is waiting in PREVIEW / YOUR CUT. Select TAKE LIVE to move it to the programme monitor and start the broadcast.",
-      action: live ? "WATCH THE SIGNAL" : "TAKE MY EDIT LIVE",
+      action: live ? "SHOW THE SIGNAL" : "SHOW TAKE LIVE",
       target: live
         ? '[data-guide-target="attention"]'
         : '[data-guide-target="take-live"]',
@@ -144,7 +145,7 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
       step: "CALLER",
       title: "Choose what the interruption changes.",
       copy: "Patch the caller through, hold the picture, recut it, or switch cameras. The choice is recorded in your episode—not merely acknowledged.",
-      action: "ANSWER THE INTERRUPTION",
+      action: "SHOW MY CHOICES",
       target: '[data-guide-target="caller"]',
     };
   if (stage === "ending" || stage === "replay")
@@ -153,7 +154,7 @@ function journeyGuide(stage: Stage, live: boolean): JourneyGuide | null {
       step: "ARCHIVE",
       title: "Your broadcast is on the record.",
       copy: "Browse any cut, replay the night, keep an exact frame or download the full dossier. Run another night to explore a different branch without rebuilding your ident.",
-      action: "BROWSE MY CUTS",
+      action: "SHOW MY REPLAY",
       target: '[data-guide-target="archive"]',
     };
   return null;
@@ -398,6 +399,10 @@ export default function Home() {
   }, []);
   const station = (alias.trim() || "AFTER HOURS").toUpperCase() + " TV";
   const isEditor = stage === "ident" || stage === "edit";
+  useEffect(() => {
+    if (!isEditor || !editorReady || !editorHost.current) return;
+    return labelEditorActions(editorHost.current);
+  }, [isEditor, editorReady]);
   const nightLabel = String(night).padStart(2, "0");
   const sponsor = sponsorAt(spot);
   const segments = attentionSegments(attention);
@@ -413,6 +418,14 @@ export default function Home() {
   const episodeActive = stage === "replay" ? replayAt : Math.max(0, cut.shots.length - 1);
   const outcome = episodeBeats(cut);
   const currentGuide = journeyGuide(stage, live);
+  const guideKey = currentGuide?.key;
+  const chapter = stage === "intro" || stage === "boot" || stage === "name"
+    ? "01 / 04 · TUNE IN"
+    : stage === "watch" || stage === "source" || stage === "ident" || stage === "edit"
+      ? "02 / 04 · MAKE YOUR CUT"
+      : stage === "ending" || stage === "replay"
+        ? "04 / 04 · ON THE RECORD"
+        : "03 / 04 · GO LIVE";
   const followGuide = useCallback(() => {
     const selector = currentGuide?.target;
     setGuideOpen(false);
@@ -458,12 +471,17 @@ export default function Home() {
     });
   }, []);
   useEffect(() => {
-    if (!guideReady || guidesMuted || pressureOpen || !currentGuide) return;
-    if (seenGuides.current.has(currentGuide.key)) return;
-    seenGuides.current.add(currentGuide.key);
-    persistGuides(false);
-    queueMicrotask(() => setGuideOpen(true));
-  }, [currentGuide, guideReady, guidesMuted, persistGuides, pressureOpen]);
+    if (!guideReady) return;
+    // Let the opening and the finished broadcast speak for themselves. Help
+    // stays available everywhere, with first-use notes at consequential controls.
+    const automatic = guideKey && !["arrival", "callsign", "archive", "on-air"].includes(guideKey);
+    const show = Boolean(automatic && !guidesMuted && !pressureOpen && !seenGuides.current.has(guideKey!));
+    if (show && guideKey) {
+      seenGuides.current.add(guideKey);
+      persistGuides(false);
+    }
+    queueMicrotask(() => setGuideOpen(show));
+  }, [guideKey, guideReady, guidesMuted, persistGuides, pressureOpen]);
   useEffect(() => {
     if (!guideOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -1147,19 +1165,16 @@ export default function Home() {
           <Radio size={20} /> DEAD AIR
         </span>
         <span className="station-label">
-          {stage === "intro" ? "YOUR COAST. YOUR CUT." : station + " / NIGHT " + nightLabel}
+          {stage === "intro" ? "YOUR COAST. YOUR CUT." : <>{station}<small>{chapter}</small></>}
         </span>
         <div className="top-actions">
           <button
             className="quiet help-toggle"
             onClick={() => {
-              if (guidesMuted) {
-                setGuidesMuted(false);
-                persistGuides(false);
-              }
               setGuideOpen(true);
             }}
             aria-expanded={guideOpen}
+            aria-controls="journey-guide"
           >
             Guide
           </button>
@@ -1172,6 +1187,7 @@ export default function Home() {
       </header>
       {guideOpen && currentGuide && !pressureOpen && (
         <aside
+          id="journey-guide"
           className="journey-guide"
           aria-labelledby="journey-guide-title"
           aria-describedby="journey-guide-copy"
@@ -1184,7 +1200,7 @@ export default function Home() {
           </div>
           <strong id="journey-guide-title">{currentGuide.title}</strong>
           <p id="journey-guide-copy">{currentGuide.copy}</p>
-          <span className="guide-pause-note">The broadcast pauses while this note is open.</span>
+          {(live || stage === "watch" || stage === "replay") && <span className="guide-pause-note">The broadcast pauses while this note is open.</span>}
           <div className="journey-guide-actions">
             <button className="primary" onClick={followGuide}>
               {currentGuide.action}
@@ -1217,7 +1233,7 @@ export default function Home() {
             className="arrival-art"
             src={display.opening}
             srcSet={`${display.openingSmall} 768w, ${display.opening} 1440w`}
-            sizes="100vw"
+            sizes="(max-width: 700px) 1440px, 100vw"
             width={1440}
             height={811}
             fetchPriority="high"
@@ -1237,12 +1253,12 @@ export default function Home() {
           </div>
           <div className="invitation">
             <span className="eyebrow">MARLIN KEY / 20:46</span>
-            <h2>The city’s watching.</h2>
-            <p>Freeze a camera, shape what it proves, then take your exact edit live.</p>
+            <h2>You control the story.</h2>
+            <p>A waterfront deal. Two cameras. Someone who wants you off air. Edit the frame the city gets to see.</p>
             <button className="primary" data-guide-target="boot" onClick={bootStation}>
               BOOT THE STATION <ArrowUpRight size={20} />
             </button>
-            <small>EDIT A FRAME → TAKE IT LIVE → FACE THE FALLOUT</small>
+            <small className="arrival-promise">5 MINUTES · YOUR CHOICES CHANGE THE ENDING</small>
             <button className="quiet soundtrack-invite" onClick={() => void toggleSound(!sound)}>
               {sound ? <Volume2 size={16} /> : <Play size={16} />}{" "}
               {musicLoading
@@ -2033,8 +2049,12 @@ export default function Home() {
             </div>
           )}
           <div className="episode-actions">
+            <button className="primary episode-card-action" disabled={busy} onClick={saveCard}>
+              <Download size={18} />
+              {busy ? "DEVELOPING…" : "KEEP MY BROADCAST DOSSIER"}
+            </button>
             <button
-              className="primary"
+              className="secondary"
               data-guide-target="archive"
               onClick={() => {
                 setReplayIndex(0);
@@ -2046,10 +2066,6 @@ export default function Home() {
             </button>
             <button className="secondary" onClick={saveStill}>
               <Download size={18} /> KEEP FRAME
-            </button>
-            <button className="secondary episode-card-action" disabled={busy} onClick={saveCard}>
-              <Download size={18} />
-              {busy ? "DEVELOPING…" : "KEEP BROADCAST DOSSIER"}
             </button>
             {/* A second night without re-running boot, callsign and the ident:
                 the branches are meant to be explored. */}
@@ -2067,11 +2083,9 @@ export default function Home() {
             <small>{sponsor.strap}</small>
           </div>
           <p className="episode-note">
-            Your saved artwork, callsign, full cut log, choices, and closing frame become one
-            downloadable broadcast dossier. <b>RUN ANOTHER NIGHT</b> keeps your station ident and
-            takes you back to the cameras, so you can try the other angle, the other caller answer
-            and the other warning choice. Everything stays in this tab. Channel 08 sells airtime to{" "}
-            {sponsors.length} Marlin Key businesses, none of which exist.
+            Keep the night as a 1600 × 1200 PNG: your artwork, callsign, every cut and every choice.
+            <b> RUN ANOTHER NIGHT</b> keeps your station name and lets you try the other side of the story.
+            Download before leaving; this broadcast lives in this tab.
           </p>
         </section>
       )}

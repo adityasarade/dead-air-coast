@@ -1,5 +1,17 @@
 # Dead Air competition audit
 
+## Final experience pass — 23 September 2026
+
+- Kept the opening artwork unobstructed; automatic guidance now appears at first-use camera, editor, preview and caller controls. Manual Guide remains available after Stop tips, and Escape closes it.
+- Rewrote the invitation around the waterfront incident, the visitor's role and the five-minute commitment. Added chapter progress in the station header.
+- Corrected the phone hero's source sizing and composition so the portrait crop uses the sharper artwork and keeps the operator in frame.
+- Promoted the 1600 × 1200 broadcast dossier as the ending's primary action, with the replay and exact-frame download alongside it.
+- Restored accessible names for the native editor's icon-only Save and Cancel controls on phones.
+- Found and fixed sentence truncation in the downloaded dossier. Multiline text now shrinks to fit while preserving all words; every authored ending and decision summary has regression coverage.
+- Verification: 33 unit tests, ESLint, TypeScript and the Vercel production build pass. Browser journeys exercise an untouched Save, a real filter edit, exact-image propagation, the caller and fixer, and a correctly sized PNG dossier. Landing widths of 320, 390 and 1440 pixels have no horizontal overflow.
+
+These changes target the published visual-execution and experience criteria while preserving the editor as the only route to the player's authored broadcast.
+
 Audit date: 14 September 2026
 
 Dead Air interprets the challenge as an authored pirate-TV side mission rather than a poster or character generator. A visitor names a station, freezes an original camera plate, makes a required visible edit in React Image Editor, takes it live, reacts to a caller and a threat, then receives a replay and downloadable episode artifact built from the exact saved pixels.

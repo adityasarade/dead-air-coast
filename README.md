@@ -16,7 +16,7 @@ _One continuous take of the live build: the frozen camera plate in React Image E
 4. Make one visible move — MARK UP a line, add a HEADLINE, apply a GRADE — then use the editor's own **Save** control. An untouched Save is refused.
 5. Your exact saved image is now in the **PREVIEW / YOUR CUT** monitor, the same size as the programme monitor beside it, with the preview bus lit coral. Select **TAKE LIVE** and it becomes the on-air picture.
 6. Watch **EYES ON CH 08** climb. When the meter fills, the fixer has found your antenna.
-7. Answer the caller, then answer the fixer's warning at the van. Select **CUT & GET OUT**, review the three-beat broadcast ledger and browsable cut strip, then **KEEP BROADCAST DOSSIER** to download a 1600 × 1200 record with your unmodified saved plate, choices and exact cut log inside it.
+7. Answer the caller, then answer the fixer's warning at the van. Select **CUT & GET OUT**, review the three-beat broadcast ledger and browsable cut strip, then **KEEP MY BROADCAST DOSSIER** to download a 1600 × 1200 record with your unmodified saved plate, choices and exact cut log inside it.
 8. Select **RUN ANOTHER NIGHT** to see a different branch without redoing your ident.
 
 The moment worth watching is step 4 into step 5: the picture you saved in Unlayer is the picture the city sees. Nothing is re-rendered, re-encoded, or substituted between the two.

@@ -60,6 +60,34 @@ export function fitText(
   return size;
 }
 
+/** Fit complete sentences into a fixed number of lines without dropping words. */
+export function fitTextLines(
+  context: TextMeasurer,
+  text: string,
+  maxWidth: number,
+  maxLines: number,
+  maxSize: number,
+  minSize: number,
+  font: (size: number) => string,
+) {
+  for (let size = maxSize; ; size -= 1) {
+    context.font = font(size);
+    const lines: string[] = [];
+    let line = "";
+    for (const word of text.trim().split(/\s+/)) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && context.measureText(next).width > maxWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = next;
+      }
+    }
+    if (line) lines.push(line);
+    if (lines.length <= maxLines || size <= minSize) return lines;
+  }
+}
+
 /**
  * Broadcast scanlines: 2-px transparent black rules, so a composite reads as a
  * picture coming off a monitor rather than a flat export. Cheap enough to run
